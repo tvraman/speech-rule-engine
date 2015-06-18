@@ -459,3 +459,8 @@ sre.BaseRuleStore.comparePreconditions_ = function(rule1, rule2) {
   return sre.BaseRuleStore.compareStaticConstraints_(
       prec1.constraints, prec2.constraints);
 };
+
+
+sre.BaseRuleStore.prototype.jsonify = function() {
+  this.speechRules_.forEach(goog.bind(function(rule) {rule.jsonify();}, this));
+};

@@ -405,3 +405,23 @@ sre.SpeechRule.OutputError = function(msg) {
   this.message = msg || '';
 };
 goog.inherits(sre.SpeechRule.OutputError, Error);
+
+
+sre.SpeechRule.prototype.jsonify = function() {
+  var result = {};
+  result.key = this.name;
+  result.dymamic = sre.SpeechRule.stringifyCstr(this.dynamicCstr);
+  result.selector = this.precondition.query;
+  result.constraints = this.precondition.constraints;
+  var actions = [];
+  for (var i = 0, action; action = this.action[i]; i++) {
+    var output = {};
+    output.type = action.type;
+    output.content = action.content;
+    // TODO (sorge) Output list of personalities.
+    output.personality = [];
+    actions.push(output);
+  }
+  result.actions = actions;
+  console.log(JSON.stringify);
+};

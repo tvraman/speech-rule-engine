@@ -55,11 +55,14 @@ sre.Cli.prototype.commandLine = function() {
   commander.style = '';
   /** @type {!boolean} */
   commander.verbose = false;
+  /** @type {!boolean} */
+  commander.jsonify = false;
 
   commander.version(sre.System.getInstance().version).
       option('-d, --dom [name]', 'Domain or subject area [name]').
       option('-e, --enumerate', 'Enumerates available domains and styles').
       option('-i, --input [name]', 'Input file [name]').
+      option('-j, --jsonify', 'Output a json list of rules').
       option('-l, --log [name]', 'Log file [name]').
       option('-o, --output [name]', 'Output file [name]').
       option('-s, --semantics', 'Switch on semantics interpretation').
@@ -84,6 +87,9 @@ sre.Cli.prototype.commandLine = function() {
         });
     if (commander.verbose) {
       sre.Debugger.getInstance().init(commander.log);
+    }
+    if (commander.jsonify) {
+      sre.SpeechRuleEngine.getInstance().jsonify();
     }
     if (commander.input) {
       sre.System.getInstance().processFile(commander.input, commander.output);

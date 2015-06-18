@@ -372,3 +372,8 @@ sre.SpeechRuleEngine.debugNamedSpeechRule = function(name, node) {
     }
   }
 };
+
+
+sre.SpeechRuleEngine.prototype.jsonify = function() {
+  this.activeStore_.jsonify();
+};
