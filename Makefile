@@ -18,6 +18,7 @@ NODE_MODULES = $(PREFIX)/$(MODULE_NAME)
 SRC_DIR = $(abspath ./src)
 BIN_DIR = $(abspath ./bin)
 LIB_DIR = $(abspath ./lib)
+RES_DIR = $(abspath ./resources)
 SRC = $(SRC_DIR)/*/*.js
 TARGET = $(LIB_DIR)/sre.js
 DEPS = $(SRC_DIR)/deps.js
@@ -26,19 +27,28 @@ MATHJAX = $(LIB_DIR)/mathjax-sre.js
 SEMANTIC = $(LIB_DIR)/semantic.js
 SEMANTIC_NODE = $(LIB_DIR)/semantic-node.js
 ENRICH = $(LIB_DIR)/enrich.js
+LICENSE = $(RES_DIR)/license-header.txt
 
-START = $(BIN_DIR)/sre
 INTERACTIVE = $(LIB_DIR)/sre4node.js
-JSON_DIR = $(SRC_DIR)/mathmaps
+JSON_SRC = $(SRC_DIR)/mathmaps
+JSON_DST = $(LIB_DIR)/mathmaps
 MAPS = functions symbols units
-IEMAPS_FILE = $(JSON_DIR)/mathmaps_ie.js
-MAPS_DIRS = $(foreach dir, $(MAPS), $(JSON_DIR)/$(dir))
+IEMAPS_FILE = $(JSON_DST)/mathmaps_ie.js
+LOCALES = $(JSON_SRC)/*  ## $(foreach dir, $(MAPS), $(JSON_SRC)/$(dir))
 
 TEST_DIR = $(abspath ./tests)
 TEST_TARGET = $(LIB_DIR)/test.js
 TEST_DEPS = $(TEST_DIR)/deps.js
 TEST = $(BIN_DIR)/test_sre
 TEST_SRC = $(TEST_DIR)/*.js
+
+JSDOC = $(NODE_MODULES)/.bin/jsdoc
+JSDOC_FLAGS = -c $(PREFIX)/.jsdoc.json
+DOCS = $(PREFIX)/docs
+DOCS_SRC = $(DOCS)/src
+DOCS_TESTS = $(DOCS)/tests
+
+JSON_MINIFY = npx json-minify
 
 ##################################################################
 # Error flags.
@@ -67,13 +77,13 @@ CLOSURE_LIB_NAME = google-closure-library
 CLOSURE_LIB = $(NODE_MODULES)/$(CLOSURE_LIB_NAME)
 CLOSURE_ROOT = $(CLOSURE_LIB)/closure/bin/build
 COMPILER_JAR = $(NODE_MODULES)/google-closure-compiler/compiler.jar
-CLOSURE_COMPILER = java -jar $(COMPILER_JAR) --dependency_mode=STRICT $(CLOSURE_LIB)/closure/goog/base.js $(ERROR_FLAGS) $(EXTERN_FLAGS) '!**externs.js'
+CLOSURE_COMPILER = java -jar $(COMPILER_JAR) --dependency_mode=STRICT $(CLOSURE_LIB)/closure/goog/base.js $(ERROR_FLAGS) $(EXTERN_FLAGS) '!**externs.js' --output_wrapper_file $(LICENSE)
 DEPSWRITER = python $(CLOSURE_ROOT)/depswriter.py
 
 space = $(null) #
 comma = ,
 LINT_EXCLUDE_FILES = deps.js,$(IEMAPS_FILE)
-LINT_EXCLUDE_DIRS = $(subst $(space),$(comma),$(strip $(MAPS_DIRS)))
+LINT_EXCLUDE_DIRS = $(JSON_SRC)
 
 LINT_ROOT = $(NODE_MODULES)/closure-linter-wrapper/tools/
 GJSLINT = python $(LINT_ROOT)/gjslint.py --unix_mode --strict --jsdoc -x '$(LINT_EXCLUDE_FILES)' -e '$(LINT_EXCLUDE_DIRS)' -r
@@ -111,18 +121,7 @@ $(DEPS):
 	@$(DEPSWRITER) --root_with_prefix="$(SRC_DIR) $(SRC_DIR)" > $(DEPS)
 
 
-start_files: directories $(START) $(INTERACTIVE)
-
-start: $(START)
-
-$(START): 
-	@echo "Making startup script."
-	@echo "#!/bin/bash" > $@
-	@echo "## This script is automatically generated. Do not edit!" >> $@
-	@echo "\nexport SRE_JSON_PATH=$(JSON_DIR)\n" >> $@
-	@echo $(NODEJS) $(TARGET) "\$$@" >> $@
-	@chmod 755 $@
-
+start_files: directories $(INTERACTIVE)
 
 interactive: directories $(INTERACTIVE) deps
 
@@ -139,17 +138,16 @@ $(INTERACTIVE):
 	@echo "  }" >> $@
 	@echo "  return true;" >> $@
 	@echo "};" >> $@
-	@echo "process.env.SRE_JSON_PATH = '$(JSON_DIR)';" >> $@
+	@echo "process.env.SRE_JSON_PATH = '$(JSON_SRC)';" >> $@
 	@echo "require('$(DEPS)');" >> $@ 
 	@echo "goog.require('sre.System');" >> $@
 	@echo "sre.System.getInstance().setupEngine({'mode': sre.Engine.Mode.ASYNC});" >> $@
 
-clean: clean_test clean_semantic clean_browser clean_enrich clean_mathjax
+clean: clean_test clean_semantic clean_browser clean_enrich clean_mathjax clean_iemaps
 	rm -f $(TARGET)
 	rm -f $(DEPS)
-	rm -f $(START)
 	rm -f $(INTERACTIVE)
-	$(foreach map, $(MAPS), rm -rf $(LIB_DIR)/$(map))
+	rm -rf $(JSON_DST)
 
 
 ##################################################################
@@ -180,7 +178,7 @@ $(TEST):
 	@echo "Making test script."
 	@echo "#!/bin/bash" > $@
 	@echo "## This script is automatically generated. Do not edit!" >> $@
-	@echo "\nexport SRE_JSON_PATH=$(JSON_DIR)\n" >> $@
+	@echo "\nexport SRE_JSON_PATH=$(JSON_SRC)\n" >> $@
 	@echo $(NODEJS) $(TEST_TARGET) "\$$@" >> $@
 	@chmod 755 $@
 
@@ -197,25 +195,33 @@ clean_test:
 # Publish the API via npm.
 ##################################################################
 
-publish: api maps
+publish: clean compile browser maps iemaps
 
 maps: $(MAPS)
 
 $(MAPS): 
-	cp -R $(JSON_DIR)/$@ $(LIB_DIR)/$@
+	@for j in $(LOCALES); do\
+		dir=$(JSON_DST)/`basename $$j`/$@; \
+		mkdir -p $$dir; \
+		for i in $$j/$@/*.js; do\
+			$(JSON_MINIFY) $$i > $$dir/`basename $$i`; \
+		done; \
+	done
 
 iemaps:
 	@echo 'sre.BrowserUtil.mapsForIE = {' > $(IEMAPS_FILE)
-	@for dir in $(MAPS); do\
-		for i in $(JSON_DIR)/$$dir/*.js; do\
-			echo '"'`basename $$i`'": '  >> $(IEMAPS_FILE); \
-			cat $$i >> $(IEMAPS_FILE); \
-			echo ','  >> $(IEMAPS_FILE); \
+	@for j in $(LOCALES); do\
+		for dir in $(MAPS); do\
+			for i in $(JSON_DST)/`basename $$j`/$$dir/*.js; do\
+				echo '"'`basename $$j`'/'`basename $$i`'": '  >> $(IEMAPS_FILE); \
+				cat $$i >> $(IEMAPS_FILE); \
+				echo ','  >> $(IEMAPS_FILE); \
+			done; \
 		done; \
 	done
 	@head -n -1 $(IEMAPS_FILE) > $(IEMAPS_FILE).tmp
+	@echo '}\n' >> $(IEMAPS_FILE).tmp
 	@mv $(IEMAPS_FILE).tmp $(IEMAPS_FILE)
-	@echo '}\n' >> $(IEMAPS_FILE)
 
 api: $(SRC)
 	@echo Compiling Speech Rule Engine API
@@ -263,3 +269,13 @@ clean_enrich:
 
 emacs: publish
 	@cp $(TARGET) ../emacs-math-speak/
+
+docs: $(JSDOC)
+	@$(JSDOC) $(JSDOC_FLAGS) $(SRC) -r -d $(DOCS_SRC)
+	@$(JSDOC) $(JSDOC_FLAGS) $(TEST_DIR) -r -d $(DOCS_TESTS)
+
+clean_docs:
+	rm -rf $(DOCS)
+
+clean_iemaps:
+	rm -f $(IEMAPS_FILE)

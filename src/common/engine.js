@@ -65,13 +65,21 @@ sre.Engine = function() {
    * Current domain.
    * @type {string}
    */
-  this.domain = 'default';
+  this.domain = sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.DOMAIN];
 
   /**
    * Current style.
    * @type {string}
    */
   this.style = 'short';
+
+
+  /**
+   * Current locale.
+   * @type {string}
+   */
+  this.locale = sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.LOCALE];
+
 
   /**
    * Current walker mode.
@@ -97,6 +105,12 @@ sre.Engine = function() {
    * @type {sre.Engine.Speech}
    */
   this.speech = sre.Engine.Speech.NONE;
+
+  /**
+   * Indicates if skeleton structure attributes are added to enriched elements
+   * @type {boolean}
+   */
+  this.structure = false;
 
   /**
    * List of rule sets given as the constructor functions.

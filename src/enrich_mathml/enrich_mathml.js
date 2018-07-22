@@ -27,6 +27,7 @@ goog.provide('sre.EnrichMathml.Attribute');
 goog.require('sre.BaseUtil');
 goog.require('sre.Debugger');
 goog.require('sre.DomUtil');
+goog.require('sre.Engine');
 goog.require('sre.EnrichCaseFactory');
 goog.require('sre.Semantic');
 goog.require('sre.SemanticAttr');
@@ -90,6 +91,7 @@ sre.EnrichMathml.Attribute = {
   PREFIX: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'prefix',
   ROLE: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'role',
   SPEECH: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'speech',
+  STRUCTURE: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'structure',
   TYPE: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'type'
 };
 
@@ -108,6 +110,10 @@ sre.EnrichMathml.enrich = function(mml, semantic) {
   // deleted.
   var oldMml = mml.cloneNode(true);
   sre.EnrichMathml.walkTree(semantic.root);
+  if (sre.Engine.getInstance().structure) {
+    mml.setAttribute(sre.EnrichMathml.Attribute.STRUCTURE,
+                     sre.SemanticSkeleton.fromStructure(semantic).toString());
+  }
   sre.Debugger.getInstance().generateOutput(
       function() {
         sre.EnrichMathml.formattedOutput(oldMml, mml, semantic, true);
@@ -141,9 +147,10 @@ sre.EnrichMathml.walkTree = function(semantic) {
 
   var newContent = semantic.contentNodes.map(
       /**@type{Function}*/(sre.EnrichMathml.cloneContentNode));
+  sre.EnrichMathml.setOperatorAttribute_(semantic, newContent);
   var newChildren = semantic.childNodes.map(
       /**@type{Function}*/(sre.EnrichMathml.walkTree));
-  var childrenList = sre.EnrichMathml.combineContentChildren_(
+  var childrenList = sre.SemanticSkeleton.combineContentChildren(
       semantic, newContent, newChildren);
   newNode = semantic.mathmlTree;
   if (newNode === null) {
@@ -316,8 +323,7 @@ sre.EnrichMathml.mergeChildren_ = function(node, newChildren) {
     }
     // Here we need a case that the newChild is actually an existing descendant
     // of the node, i.e., somewhere beneath but not contained in oldChildren.
-    if (sre.EnrichMathml.isDescendant_(
-        /**@type{!Element}*/ (newChildren[0]), node)) {
+    if (sre.EnrichMathml.isDescendant_(newChildren[0], node)) {
       newChildren.shift();
       continue;
     }
@@ -512,7 +518,7 @@ sre.EnrichMathml.ascendNewNode = function(newNode) {
 
 /**
  * Descends a node as long as it only contains single empty tags, that do not
- * semantic annotations already, while ignoring tags like merror, etc.
+ * have semantic annotations already, while ignoring tags like merror, etc.
  * @param {!Element} node The node from which to descend.
  * @return {!Element} The inner most node with empty tag without semantic
  *    annotations.
@@ -549,8 +555,28 @@ sre.EnrichMathml.unitChild_ = function(node) {
   }
   return sre.DomUtil.toArray(parent.childNodes).every(
       function(child) {
-        return child === node || sre.SemanticUtil.hasIgnoreTag(child);
+        return child === node || sre.EnrichMathml.isIgnorable_(child);
       });
+};
+
+
+/**
+ * Checks recursively if the node is an element that can be ignored, i.e., only
+ * has empty and ignored tags.
+ * @param {!Element} node The node to be tested.
+ * @return {boolean} True if the node is ignorable.
+ * @private
+ */
+sre.EnrichMathml.isIgnorable_ = function(node) {
+  if (!node || sre.SemanticUtil.hasIgnoreTag(node)) {
+    return true;
+  }
+  var children = sre.DomUtil.toArray(node.childNodes);
+  if (!sre.SemanticUtil.hasEmptyTag(node) && children.length) {
+    return false;
+  }
+  return sre.DomUtil.toArray(node.childNodes)
+      .every(sre.EnrichMathml.isIgnorable_);
 };
 
 
@@ -598,7 +624,7 @@ sre.EnrichMathml.cloneContentNode = function(content) {
 /**
  * Concatenates node ids into a comma separated lists.
  * @param {!Array.<!sre.SemanticNode>} nodes The list of nodes.
- * @return {!string} The comma separated lists.
+ * @return {string} The comma separated lists.
  */
 sre.EnrichMathml.makeIdList = function(nodes) {
   return nodes.map(function(node) {
@@ -652,7 +678,6 @@ sre.EnrichMathml.setAttributes = function(mml, semantic) {
  */
 sre.EnrichMathml.combineContentChildren_ = function(
     semantic, content, children) {
-  sre.EnrichMathml.setOperatorAttribute_(semantic, content);
   switch (semantic.type) {
     case sre.Semantic.Type.RELSEQ:
     case sre.Semantic.Type.INFIXOP:
@@ -665,21 +690,6 @@ sre.EnrichMathml.combineContentChildren_ = function(
     case sre.Semantic.Type.FENCED:
       children.unshift(content[0]);
       children.push(content[1]);
-      return children;
-    case sre.Semantic.Type.PUNCTUATED:
-      if (semantic.role === sre.Semantic.Role.TEXT) {
-        return sre.BaseUtil.interleaveLists(children, content);
-      }
-      var markupList = [];
-      for (var i = 0, j = 0, child, cont;
-           child = children[i], cont = content[j]; i++) {
-        if (child.getAttribute(sre.EnrichMathml.Attribute.ID) ==
-            cont.getAttribute(sre.EnrichMathml.Attribute.ID)) {
-          j++;
-          markupList.push(child);
-        }
-      }
-      sre.EnrichMathml.setOperatorAttribute_(semantic, markupList);
       return children;
     case sre.Semantic.Type.APPL:
       return [children[0], content[0], children[1]];
@@ -766,7 +776,7 @@ sre.EnrichMathml.getInnerNode = function(node) {
   }
   var remainder = children.filter(function(child) {
     return child.nodeType === sre.DomUtil.NodeType.ELEMENT_NODE &&
-        !sre.SemanticUtil.hasIgnoreTag(child);
+        !sre.EnrichMathml.isIgnorable_(child);
   });
   var result = [];
   for (var i = 0, remain; remain = remainder[i]; i++) {
@@ -833,12 +843,41 @@ sre.EnrichMathml.formattedOutput_ = function(element, name, wiki) {
  * overwrite or be shadowed by other attributes already in the node. For
  * example, with both PREFIX-attr and attr present, the latter is overwritten by
  * the operation.
- * @param {!string} mml The MathML node.
- * @return {!string} The MathML node with rewritten attributes.
+ * @param {string} mml The MathML node.
+ * @return {string} The MathML node with rewritten attributes.
  */
 sre.EnrichMathml.removeAttributePrefix = function(mml) {
   return mml.toString().replace(
       new RegExp(sre.EnrichMathml.ATTRIBUTE_PREFIX_, 'g'), '');
+};
+
+
+/**
+ * Collapses a punctuated node that only contains invisible separators.
+ * @param {sre.SemanticNode} semantic The punctuated node.
+ * @param {Array.<Element>=} opt_children A list of children where the child
+ * elements of the MathML are appended.
+ * @return {!sre.SemanticSkeleton.Sexp} If the index node was a
+ *     dummy punctuation, i.e. consisted of more than one index, a list of
+ *     strings for the collapsed structure is returned, otherwise the node id.
+ */
+sre.EnrichMathml.collapsePunctuated = function(semantic, opt_children) {
+  var optional = !!opt_children;
+  var children = opt_children || [];
+  var parent = semantic.parent;
+  var contentIds = semantic.contentNodes.map(function(x) {return x.id;});
+  contentIds.unshift('c');
+  var childIds = [semantic.id, contentIds];
+  for (var i = 0, child; child = semantic.childNodes[i]; i++) {
+    var mmlChild = sre.EnrichMathml.walkTree(child);
+    children.push(mmlChild);
+    var innerNode = sre.EnrichMathml.getInnerNode(mmlChild);
+    if (parent && !optional) {
+      innerNode.setAttribute(sre.EnrichMathml.Attribute.PARENT, parent.id);
+    }
+    childIds.push(child.id);
+  }
+  return childIds;
 };
 
 

@@ -29,6 +29,7 @@ goog.require('sre.EventUtil.KeyCode');
 goog.require('sre.Focus');
 goog.require('sre.Highlighter');
 goog.require('sre.Levels');
+goog.require('sre.Messages');
 goog.require('sre.RebuildStree');
 goog.require('sre.SpeechGenerator');
 goog.require('sre.SpeechGeneratorUtil');
@@ -46,7 +47,7 @@ goog.require('sre.WalkerUtil');
  *     this walker.
  * @param {!sre.Highlighter} highlighter The currently active
  *     highlighter.
- * @param {!string} xml The original xml/mathml node on which the walker is
+ * @param {string} xml The original xml/mathml node on which the walker is
  *      called as a string.
  * @override
  */
@@ -359,11 +360,13 @@ sre.AbstractWalker.prototype.depth_ = function() {
   var oldDepth = sre.Grammar.getInstance().getParameter('depth');
   sre.Grammar.getInstance().setParameter('depth', true);
   var primary = this.focus_.getDomPrimary();
-  var expand = (this.expandable(primary) && ['expandable']) ||
-      (this.collapsible(primary) && ['collapsible']) || [];
+  var expand = (this.expandable(primary) &&
+                [sre.Messages.NAVIGATE.EXPANDABLE]) ||
+      (this.collapsible(primary) && [sre.Messages.NAVIGATE.COLLAPSIBLE]) || [];
   var level = [sre.AuralRendering.getInstance().markup(
-      [new sre.AuditoryDescription({text: 'Level ' + this.getDepth(),
-         personality: {}})])];
+      [new sre.AuditoryDescription({text: sre.Messages.NAVIGATE.LEVEL +
+         ' ' + this.getDepth(),
+        personality: {}})])];
   var snodes = this.focus_.getSemanticNodes();
   var prefix = sre.SpeechGeneratorUtil.retrievePrefix(snodes[0]);
   if (prefix) {
@@ -483,7 +486,7 @@ sre.AbstractWalker.prototype.restoreState = function() {
 
 /**
  * Finds the focus on the current level for a given node id.
- * @param {!number} id The id number.
+ * @param {number} id The id number.
  * @return {sre.Focus} The focus on a particular level.
  */
 sre.AbstractWalker.prototype.findFocusOnLevel = goog.abstractMethod;

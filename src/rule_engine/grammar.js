@@ -144,7 +144,7 @@ sre.Grammar.prototype.getCorrection = function(correction) {
 
 
 /**
- * @return {!string} A string version of the grammatical state.
+ * @return {string} A string version of the grammatical state.
  */
 sre.Grammar.prototype.getState = function() {
   var pairs = [];
@@ -330,6 +330,8 @@ sre.Grammar.correctFont_ = function(text, correction) {
   if (!correction || !text) {
     return text;
   }
+  // TODO: Combine with localFont.
+  correction = sre.L10n.getLocale().FONT[correction] || correction;
   var correctionComp = correction.split(/ |-/);
   var regExp = new RegExp('^' + correctionComp.join('( |-)') + '( |-)');
   return text.replace(regExp, '');

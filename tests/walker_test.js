@@ -68,7 +68,7 @@ goog.inherits(sre.WalkerTest, sre.AbstractTest);
  */
 sre.WalkerTest.prototype.setUpTest = function() {
   this.system.setupEngine(
-      {semantics: true, domain: 'mathspeak', style: 'default',
+      {semantics: true, locale: 'en', domain: 'mathspeak', style: 'default',
         rules: ['AbstractionRules', 'MathspeakRules'],
         speech: sre.Engine.Speech.NONE});
 };
@@ -1128,7 +1128,7 @@ sre.WalkerTest.prototype.executeTest_ = function(walker, move, result) {
 
 /**
  * Creates a walker.
- * @param {!string} type The type of the walker.
+ * @param {string} type The type of the walker.
  * @param {!Node} node The node on which to start the walker.
  * @param {{renderer: string,
  *          browser: (undefined|string)}} renderer

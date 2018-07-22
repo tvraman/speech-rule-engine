@@ -29,6 +29,7 @@ goog.require('sre.DynamicCstr');
 goog.require('sre.Engine');
 goog.require('sre.Enrich');
 goog.require('sre.HighlighterFactory');
+goog.require('sre.L10n');
 goog.require('sre.MathStore');
 goog.require('sre.Semantic');
 goog.require('sre.SpeechGeneratorFactory');
@@ -36,6 +37,7 @@ goog.require('sre.SpeechGeneratorUtil');
 goog.require('sre.SpeechRuleEngine');
 goog.require('sre.SpeechRuleStores');
 goog.require('sre.SystemExternal');
+goog.require('sre.Variables');
 goog.require('sre.WalkerFactory');
 goog.require('sre.WalkerUtil');
 
@@ -50,7 +52,7 @@ sre.System = function() {
    * Version number.
    * @type {string}
    */
-  this.version = '2.0.1';
+  this.version = sre.Variables.VERSION;
 
 };
 goog.addSingletonGetter(sre.System);
@@ -94,7 +96,7 @@ goog.addSingletonGetter(sre.System.LocalStorage_);
 /**
  * Method to setup and intialize the speech rule engine. Currently the feature
  * parameter is ignored, however, this could be used to fine tune the setup.
- * @param {Object.<string,? (string)>} feature An object describing some
+ * @param {Object.<boolean|string>} feature An object describing some
  *     setup features.
  */
 sre.System.prototype.setupEngine = function(feature) {
@@ -107,8 +109,9 @@ sre.System.prototype.setupEngine = function(feature) {
   var setMulti = function(feat) {
     engine[feat] = feature[feat] || engine[feat];
   };
-  var binaryFeatures = ['strict', 'cache', 'semantics'];
-  var stringFeatures = ['markup', 'style', 'domain', 'speech', 'walker'];
+  var binaryFeatures = ['strict', 'cache', 'semantics', 'structure'];
+  var stringFeatures = ['markup', 'style', 'domain', 'speech', 'walker',
+                        'locale'];
   setMulti('mode');
   sre.System.prototype.configBlocks_(feature);
   binaryFeatures.forEach(setIf);
@@ -123,16 +126,21 @@ sre.System.prototype.setupEngine = function(feature) {
   engine.ruleSets = feature.rules ? feature.rules :
       sre.SpeechRuleStores.availableSets();
   sre.SpeechRuleEngine.getInstance().parameterize(engine.ruleSets);
-  engine.dynamicCstr = sre.DynamicCstr.create(engine.domain, engine.style);
+  engine.dynamicCstr = sre.DynamicCstr.create(
+      engine.locale, engine.domain, engine.style);
   engine.comparator = new sre.DynamicCstr.DefaultComparator(
       engine.dynamicCstr,
-      sre.DynamicProperties.create(['default'], ['short', 'default']));
+      sre.DynamicProperties.create(
+      [sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.LOCALE]],
+      [sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.DOMAIN]],
+      ['short', sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.STYLE]]));
+  sre.L10n.setLocale();
 };
 
 
 /**
  * Reads configuration blocks and adds them to the feature vector.
- * @param {Object.<string,? (string)>} feature An object describing some
+ * @param {Object.<boolean|string>} feature An object describing some
  *     setup features.
  * @private
  */

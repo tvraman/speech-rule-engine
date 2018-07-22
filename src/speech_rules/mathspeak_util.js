@@ -21,9 +21,14 @@ goog.provide('sre.MathspeakUtil');
 
 goog.require('sre.BaseUtil');
 goog.require('sre.DomUtil');
+goog.require('sre.Messages');
 goog.require('sre.Semantic');
 goog.require('sre.SystemExternal');
 goog.require('sre.XpathUtil');
+
+
+goog.scope(function() {
+var msg = sre.Messages;
 
 
 /**
@@ -117,6 +122,18 @@ sre.MathspeakUtil.nestingDepth = {};
 
 
 /**
+ * Resets the nesting depth parameters. Method should be used on every new
+ * expression.
+ * @param {Node} node The node to translate.
+ * @return {Array.<Node>} Array containing the original node only.
+ */
+sre.MathspeakUtil.resetNestingDepth = function(node) {
+  sre.MathspeakUtil.nestingDepth = {};
+  return [node];
+};
+
+
+/**
  * Computes the depth of nested descendants of a particular set of tags for a
  * node.
  * @param {string} type The type of nesting depth.
@@ -129,7 +146,7 @@ sre.MathspeakUtil.nestingDepth = {};
  * @param {function(!Node): boolean=} opt_func A function that overrides both
  *     tags and attribute barriers, i.e., if function returns true it will be
  *     considered as barrier, otherwise tags and attributes will be considered.
- * @return {!number} The nesting depth.
+ * @return {number} The nesting depth.
  */
 sre.MathspeakUtil.getNestingDepth = function(type, node, tags, opt_barrierTags,
                                              opt_barrierAttrs, opt_func) {
@@ -218,129 +235,112 @@ sre.MathspeakUtil.computeNestingDepth_ = function(
 /**
  * Computes and returns the nesting depth of fraction nodes.
  * @param {!Node} node The fraction node.
- * @return {!number} The nesting depth. 0 if the node is not a fraction.
+ * @return {number} The nesting depth. 0 if the node is not a fraction.
  */
 sre.MathspeakUtil.fractionNestingDepth = function(node) {
   return sre.MathspeakUtil.getNestingDepth(
       'fraction', node, ['fraction'], sre.MathspeakUtil.nestingBarriers, {},
-      function(node) {
-        return sre.MathspeakUtil.vulgarFractionSmall(node);
-      }
-  );
+      msg.MS_FUNC.FRAC_NEST_DEPTH);
 };
 
 
 /**
  * Opening string for fractions in Mathspeak verbose mode.
  * @param {!Node} node The fraction node.
- * @return {!string} The opening string.
+ * @return {string} The opening string.
  */
 sre.MathspeakUtil.openingFractionVerbose = function(node) {
   var depth = sre.MathspeakUtil.fractionNestingDepth(node);
-  return new Array(depth + 1).join('Start') + 'Fraction';
+  return new Array(depth + 1).join(msg.MS.START) + msg.MS.FRAC_V;
 };
 
 
 /**
  * Closing string for fractions in Mathspeak verbose mode.
  * @param {!Node} node The fraction node.
- * @return {!string} The closing string.
+ * @return {string} The closing string.
  */
 sre.MathspeakUtil.closingFractionVerbose = function(node) {
   var depth = sre.MathspeakUtil.fractionNestingDepth(node);
-  return new Array(depth + 1).join('End') + 'Fraction';
+  return new Array(depth + 1).join(msg.MS.END) + msg.MS.FRAC_V;
 };
 
 
 /**
  * Middle string for fractions in Mathspeak verbose mode.
  * @param {!Node} node The fraction node.
- * @return {!string} The middle string.
+ * @return {string} The middle string.
  */
 sre.MathspeakUtil.overFractionVerbose = function(node) {
   var depth = sre.MathspeakUtil.fractionNestingDepth(node);
-  return new Array(depth + 1).join('Over');
+  return new Array(depth + 1).join(msg.MS.FRAC_OVER).trim();
 };
 
 
 /**
  * Opening string for fractions in Mathspeak brief mode.
  * @param {!Node} node The fraction node.
- * @return {!string} The opening string.
+ * @return {string} The opening string.
  */
 sre.MathspeakUtil.openingFractionBrief = function(node) {
   var depth = sre.MathspeakUtil.fractionNestingDepth(node);
-  return new Array(depth + 1).join('Start') + 'Frac';
+  return new Array(depth + 1).join(msg.MS.START) + msg.MS.FRAC_B;
 };
 
 
 /**
  * Closing string for fractions in Mathspeak brief mode.
  * @param {!Node} node The fraction node.
- * @return {!string} The closing string.
+ * @return {string} The closing string.
  */
 sre.MathspeakUtil.closingFractionBrief = function(node) {
   var depth = sre.MathspeakUtil.fractionNestingDepth(node);
-  return new Array(depth + 1).join('End') + 'Frac';
-};
-
-
-/**
- * Translation for count word in superbrief nesting description.
- * @param {!number} count The counting parameter.
- * @return {!string} The corresponding string.
- */
-sre.MathspeakUtil.nestingToString = function(count) {
-  switch (count) {
-    case 1:
-      return '';
-    case 2:
-      return 'Twice';
-    default:
-      return count.toString();
-  }
+  return new Array(depth + 1).join(msg.MS.END) + msg.MS.FRAC_B;
 };
 
 
 /**
  * Opening string for fractions in Mathspeak superbrief mode.
  * @param {!Node} node The fraction node.
- * @return {!string} The opening string.
+ * @return {string} The opening string.
  */
 sre.MathspeakUtil.openingFractionSbrief = function(node) {
   var depth = sre.MathspeakUtil.fractionNestingDepth(node);
   if (depth === 1) {
-    return 'Frac';
+    return msg.MS.FRAC_S;
   }
-  return 'Nest' + sre.MathspeakUtil.nestingToString(depth - 1) + 'Frac';
+  return msg.MS.NEST_FRAC + msg.MS_FUNC.RADICAL_NEST_DEPTH(depth - 1) +
+      msg.MS.FRAC_S;
 };
 
 
 /**
  * Closing string for fractions in Mathspeak superbrief mode.
  * @param {!Node} node The fraction node.
- * @return {!string} The closing string.
+ * @return {string} The closing string.
  */
 sre.MathspeakUtil.closingFractionSbrief = function(node) {
   var depth = sre.MathspeakUtil.fractionNestingDepth(node);
   if (depth === 1) {
-    return 'EndFrac';
+    return msg.MS.ENDFRAC;
   }
-  return 'Nest' + sre.MathspeakUtil.nestingToString(depth - 1) + 'EndFrac';
+  return msg.MS.NEST_FRAC + msg.MS_FUNC.RADICAL_NEST_DEPTH(depth - 1) +
+      msg.MS.ENDFRAC;
 };
 
 
 /**
  * Middle string for fractions in Mathspeak superbrief mode.
  * @param {!Node} node The fraction node.
- * @return {!string} The middle string.
+ * @return {string} The middle string.
  */
 sre.MathspeakUtil.overFractionSbrief = function(node) {
   var depth = sre.MathspeakUtil.fractionNestingDepth(node);
   if (depth === 1) {
-    return 'Over';
+    return msg.MS.FRAC_OVER;
   }
-  return 'Nest' + sre.MathspeakUtil.nestingToString(depth - 1) + 'Over';
+  return msg.MS.NEST_FRAC + msg.MS_FUNC.RADICAL_NEST_DEPTH(depth - 1) +
+      msg.MS.OVER;
 };
 
 
@@ -378,8 +378,8 @@ sre.MathspeakUtil.largeNumbers = [
 
 /**
  * Translates a number of up to twelve digits into a string representation.
- * @param {!number} number The number to translate.
- * @return {!string} The string representation of that number.
+ * @param {number} number The number to translate.
+ * @return {string} The string representation of that number.
  */
 sre.MathspeakUtil.hundredsToWords = function(number) {
   var n = number % 1000;
@@ -399,8 +399,8 @@ sre.MathspeakUtil.hundredsToWords = function(number) {
 
 /**
  * Translates a number of up to twelve digits into a string representation.
- * @param {!number} number The number to translate.
- * @return {!string} The string representation of that number.
+ * @param {number} number The number to translate.
+ * @return {string} The string representation of that number.
  */
 sre.MathspeakUtil.numberToWords = function(number) {
   if (number >= Math.pow(10, 36)) {
@@ -425,9 +425,9 @@ sre.MathspeakUtil.numberToWords = function(number) {
 /**
  * Translates a number of up to twelve digits into a string representation of
  * its ordinal.
- * @param {!number} num The number to translate.
+ * @param {number} num The number to translate.
  * @param {boolean} plural A flag indicating if the ordinal is in plural.
- * @return {!string} The ordinal of the number as string.
+ * @return {string} The ordinal of the number as string.
  */
 sre.MathspeakUtil.numberToOrdinal = function(num, plural) {
   if (num === 2) {
@@ -447,7 +447,7 @@ sre.MathspeakUtil.numberToOrdinal = function(num, plural) {
   } else if (ordinal.match(/nine$/)) {
     ordinal = ordinal.slice(0, -4) + 'ninth';
   } else if (ordinal.match(/twelve$/)) {
-    ordinal = ordinal.slice(0, -5) + 'twelfth';
+    ordinal = ordinal.slice(0, -6) + 'twelfth';
   } else if (ordinal.match(/ty$/)) {
     ordinal = ordinal.slice(0, -2) + 'tieth';
   } else {
@@ -528,7 +528,7 @@ sre.MathspeakUtil.convertVulgarFraction_ = function(node) {
   var enumerator = Number(enumStr);
   if (isNaN(denominator) || isNaN(enumerator)) {
     return {convertible: false,
-      content: enumStr + ' Over ' + denStr};
+      content: enumStr + ' ' + msg.MS.FRAC_OVER + ' ' + denStr};
   }
   return {convertible: true,
     enumerator: enumerator,
@@ -540,7 +540,7 @@ sre.MathspeakUtil.convertVulgarFraction_ = function(node) {
  * Converts a vulgar fraction into string representation of enumerator and
  * denominator as ordinal.
  * @param {!Node} node Fraction node to be translated.
- * @return {!string} The string representation if it is a valid vulgar fraction.
+ * @return {string} The string representation if it is a valid vulgar fraction.
  */
 sre.MathspeakUtil.vulgarFraction = function(node) {
   var conversion = sre.MathspeakUtil.convertVulgarFraction_(node);
@@ -621,72 +621,72 @@ sre.MathspeakUtil.nestedSubSuper = function(node, init, replace) {
 /**
  * Computes subscript prefix in verbose mode.
  * @param {!Node} node Subscript node.
- * @return {!string} The prefix string.
+ * @return {string} The prefix string.
  */
 sre.MathspeakUtil.subscriptVerbose = function(node) {
   return sre.MathspeakUtil.nestedSubSuper(
-      node, 'Subscript', {sup: 'Super', sub: 'Sub'});
+      node, msg.MS.SUBSCRIPT, {sup: msg.MS.SUPER, sub: msg.MS.SUB});
 };
 
 
 /**
  * Computes subscript prefix in brief mode.
  * @param {!Node} node Subscript node.
- * @return {!string} The prefix string.
+ * @return {string} The prefix string.
  */
 sre.MathspeakUtil.subscriptBrief = function(node) {
   return sre.MathspeakUtil.nestedSubSuper(
-      node, 'Sub', {sup: 'Sup', sub: 'Sub'});
+      node, msg.MS.SUB, {sup: msg.MS.SUP, sub: msg.MS.SUB});
 };
 
 
 /**
  * Computes subscript prefix in verbose mode.
  * @param {!Node} node Subscript node.
- * @return {!string} The prefix string.
+ * @return {string} The prefix string.
  */
 sre.MathspeakUtil.superscriptVerbose = function(node) {
   return sre.MathspeakUtil.nestedSubSuper(
-      node, 'Superscript', {sup: 'Super', sub: 'Sub'});
+      node, msg.MS.SUPERSCRIPT, {sup: msg.MS.SUPER, sub: msg.MS.SUB});
 };
 
 
 /**
  * Computes subscript prefix in brief mode.
  * @param {!Node} node Subscript node.
- * @return {!string} The prefix string.
+ * @return {string} The prefix string.
  */
 sre.MathspeakUtil.superscriptBrief = function(node) {
   return sre.MathspeakUtil.nestedSubSuper(
-      node, 'Sup', {sup: 'Sup', sub: 'Sub'});
+      node, msg.MS.SUP, {sup: msg.MS.SUP, sub: msg.MS.SUB});
 };
 
 
 /**
  * Computes subscript prefix in verbose mode.
  * @param {!Node} node Subscript node.
- * @return {!string} The prefix string.
+ * @return {string} The prefix string.
  */
 sre.MathspeakUtil.baselineVerbose = function(node) {
   var baseline = sre.MathspeakUtil.nestedSubSuper(
-      node, '', {sup: 'Super', sub: 'Sub'});
+      node, '', {sup: msg.MS.SUPER, sub: msg.MS.SUB});
   if (!baseline) {
-    return 'Baseline';
+    return msg.MS.BASELINE;
   }
-  return baseline.replace(/Sub$/, 'Subscript').
-      replace(/Super$/, 'Superscript');
+  return baseline.replace(new RegExp(msg.MS.SUB + '$'), msg.MS.SUBSCRIPT).
+      replace(new RegExp(msg.MS.SUPER + '$'), msg.MS.SUPERSCRIPT);
 };
 
 
 /**
  * Computes subscript prefix in brief mode.
  * @param {!Node} node Subscript node.
- * @return {!string} The prefix string.
+ * @return {string} The prefix string.
  */
 sre.MathspeakUtil.baselineBrief = function(node) {
   var baseline = sre.MathspeakUtil.nestedSubSuper(
-      node, '', {sup: 'Sup', sub: 'Sub'});
-  return baseline || 'Base';
+      node, '', {sup: msg.MS.SUP, sub: msg.MS.SUB});
+  return baseline || msg.MS.BASE;
 };
 
 
@@ -694,7 +694,7 @@ sre.MathspeakUtil.baselineBrief = function(node) {
 /**
  * Computes and returns the nesting depth of radical nodes.
  * @param {!Node} node The radical node.
- * @return {!number} The nesting depth. 0 if the node is not a radical.
+ * @return {number} The nesting depth. 0 if the node is not a radical.
  */
 sre.MathspeakUtil.radicalNestingDepth = function(node) {
   return sre.MathspeakUtil.getNestingDepth(
@@ -706,103 +706,122 @@ sre.MathspeakUtil.radicalNestingDepth = function(node) {
  * Nested string for radicals in Mathspeak mode putting together the nesting
  * depth with a pre- and postfix string that depends on the speech style.
  * @param {!Node} node The radical node.
- * @param {!string} prefix A prefix string.
- * @param {!string} postfix A postfix string.
- * @return {!string} The opening string.
+ * @param {string} prefix A prefix string.
+ * @param {string} postfix A postfix string.
+ * @return {string} The opening string.
  */
 sre.MathspeakUtil.nestedRadical = function(node, prefix, postfix) {
   var depth = sre.MathspeakUtil.radicalNestingDepth(node);
+  var index = sre.MathspeakUtil.getRootIndex(node);
+  postfix = index ? msg.MS_FUNC.COMBINE_ROOT_INDEX(postfix, index) : postfix;
   if (depth === 1) {
     return postfix;
   }
-  return prefix + sre.MathspeakUtil.nestingToString(depth - 1) + postfix;
+  return prefix + msg.MS_FUNC.RADICAL_NEST_DEPTH(depth - 1) + postfix;
+};
+
+
+/**
+ * A string indexing the root.
+ * @param {!Node} node The radical node.
+ * @return {string} The localised indexing string if it exists.
+ */
+sre.MathspeakUtil.getRootIndex = function(node) {
+  var content = node.tagName === 'sqrt' ? '2' :
+      // TODO (sorge): Make that safer?
+      sre.XpathUtil.evalXPath('children/*[1]', node)[0].textContent.trim();
+  return msg.MS_ROOT_INDEX[content] || '';
 };
 
 
 /**
  * Opening string for radicals in Mathspeak verbose mode.
  * @param {!Node} node The radical node.
- * @return {!string} The opening string.
+ * @return {string} The opening string.
  */
 sre.MathspeakUtil.openingRadicalVerbose = function(node) {
-  return sre.MathspeakUtil.nestedRadical(node, 'Nested', 'StartRoot');
+  return sre.MathspeakUtil.nestedRadical(node, msg.MS.NESTED, msg.MS.STARTROOT);
 };
 
 
 /**
  * Closing string for radicals in Mathspeak verbose mode.
  * @param {!Node} node The radical node.
- * @return {!string} The closing string.
+ * @return {string} The closing string.
  */
 sre.MathspeakUtil.closingRadicalVerbose = function(node) {
-  return sre.MathspeakUtil.nestedRadical(node, 'Nested', 'EndRoot');
+  return sre.MathspeakUtil.nestedRadical(node, msg.MS.NESTED, msg.MS.ENDROOT);
 };
 
 
 /**
  * Middle string for radicals in Mathspeak verbose mode.
  * @param {!Node} node The radical node.
- * @return {!string} The middle string.
+ * @return {string} The middle string.
  */
 sre.MathspeakUtil.indexRadicalVerbose = function(node) {
-  return sre.MathspeakUtil.nestedRadical(node, 'Nested', 'RootIndex');
+  return sre.MathspeakUtil.nestedRadical(node, msg.MS.NESTED,
+                                         msg.MS.ROOTINDEX);
 };
 
 
 /**
  * Opening string for radicals in Mathspeak brief mode.
  * @param {!Node} node The radical node.
- * @return {!string} The opening string.
+ * @return {string} The opening string.
  */
 sre.MathspeakUtil.openingRadicalBrief = function(node) {
-  return sre.MathspeakUtil.nestedRadical(node, 'Nest', 'StartRoot');
+  return sre.MathspeakUtil.nestedRadical(node, msg.MS.NEST_ROOT,
+                                         msg.MS.STARTROOT);
 };
 
 
 /**
  * Closing string for radicals in Mathspeak brief mode.
  * @param {!Node} node The radical node.
- * @return {!string} The closing string.
+ * @return {string} The closing string.
  */
 sre.MathspeakUtil.closingRadicalBrief = function(node) {
-  return sre.MathspeakUtil.nestedRadical(node, 'Nest', 'EndRoot');
+  return sre.MathspeakUtil.nestedRadical(node, msg.MS.NEST_ROOT,
+                                         msg.MS.ENDROOT);
 };
 
 
 /**
  * Middle string for radicals in Mathspeak superbrief mode.
  * @param {!Node} node The radical node.
- * @return {!string} The middle string.
+ * @return {string} The middle string.
  */
 sre.MathspeakUtil.indexRadicalBrief = function(node) {
-  return sre.MathspeakUtil.nestedRadical(node, 'Nest', 'RootIndex');
+  return sre.MathspeakUtil.nestedRadical(node, msg.MS.NEST_ROOT,
+                                         msg.MS.ROOTINDEX);
 };
 
 
 /**
  * Opening string for radicals in Mathspeak superbrief mode.
  * @param {!Node} node The radical node.
- * @return {!string} The opening string.
+ * @return {string} The opening string.
  */
 sre.MathspeakUtil.openingRadicalSbrief = function(node) {
-  return sre.MathspeakUtil.nestedRadical(node, 'Nest', 'Root');
+  return sre.MathspeakUtil.nestedRadical(node, msg.MS.NEST_ROOT, msg.MS.ROOT);
 };
 
 
 /**
  * Middle string for radicals in Mathspeak superbrief mode.
  * @param {!Node} node The radical node.
- * @return {!string} The middle string.
+ * @return {string} The middle string.
  */
 sre.MathspeakUtil.indexRadicalSbrief = function(node) {
-  return sre.MathspeakUtil.nestedRadical(node, 'Nest', 'Index');
+  return sre.MathspeakUtil.nestedRadical(node, msg.MS.NEST_ROOT, msg.MS.INDEX);
 };
 
 
 /**
  * Computes and returns the nesting depth of underscore nodes.
  * @param {!Node} node The underscore node.
- * @return {!number} The nesting depth. 0 if the node is not an underscore.
+ * @return {number} The nesting depth. 0 if the node is not an underscore.
  */
 sre.MathspeakUtil.underscoreNestingDepth = function(node) {
   return sre.MathspeakUtil.getNestingDepth(
@@ -824,14 +843,14 @@ sre.MathspeakUtil.underscoreNestingDepth = function(node) {
  */
 sre.MathspeakUtil.nestedUnderscore = function(node) {
   var depth = sre.MathspeakUtil.underscoreNestingDepth(node);
-  return Array(depth).join('Under') + 'Underscript';
+  return Array(depth).join(msg.MS.UNDER) + msg.MS.UNDERSCRIPT;
 };
 
 
 /**
  * Computes and returns the nesting depth of overscore nodes.
  * @param {!Node} node The overscore node.
- * @return {!number} The nesting depth. 0 if the node is not an overscore.
+ * @return {number} The nesting depth. 0 if the node is not an overscore.
  */
 sre.MathspeakUtil.overscoreNestingDepth = function(node) {
   return sre.MathspeakUtil.getNestingDepth(
@@ -853,7 +872,7 @@ sre.MathspeakUtil.overscoreNestingDepth = function(node) {
  */
 sre.MathspeakUtil.nestedOverscore = function(node) {
   var depth = sre.MathspeakUtil.overscoreNestingDepth(node);
-  return Array(depth).join('Over') + 'Overscript';
+  return Array(depth).join(msg.MS.OVER) + msg.MS.OVERSCRIPT;
 };
 
 
@@ -891,7 +910,7 @@ sre.MathspeakUtil.determinantIsSimple = function(node) {
 /**
  * Generate constraints for the specialised baseline rules of relation
  * sequences.
- * @return {!string} The constraint string.
+ * @return {string} The constraint string.
  */
 sre.MathspeakUtil.generateBaselineConstraint = function() {
   var ignoreElems = ['subscript', 'superscript', 'tensor'];
@@ -934,3 +953,5 @@ sre.MathspeakUtil.removeParens = function(node) {
   var content = node.childNodes[0].childNodes[0].childNodes[0].textContent;
   return content.match(/^\(.+\)$/) ? content.slice(1, -1) : content;
 };
+
+});  // goog.scope
