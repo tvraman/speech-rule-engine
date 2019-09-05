@@ -46,7 +46,7 @@ goog.addSingletonGetter(sre.SemanticProcessor);
 
 /**
  * Sets the node factory the processor is using.
- * @param {!sre.SemanticNodeFactory} factory new node factory.
+ * @param {!sre.SemanticNodeFactory} factory New node factory.
  */
 sre.SemanticProcessor.prototype.setNodeFactory = function(factory) {
   this.factory_ = factory;
@@ -123,6 +123,7 @@ sre.SemanticProcessor.prototype.infixNode_ = function(children, opNode) {
       sre.SemanticAttr.Type.INFIXOP, children, [opNode],
       sre.SemanticProcessor.getEmbellishedInner_(opNode).textContent);
   node.role = opNode.role;
+  this.propagateSimpleFunction(node);
   return node;
 };
 
@@ -153,6 +154,10 @@ sre.SemanticProcessor.prototype.concatNode_ = function(inner, nodeList, type) {
 };
 
 
+// TODO: (Simons) Rewrite to group same operators.
+//
+//       Currently the positive role is only given to the innermost single +
+//       prefix operator.
 /**
  * Wraps a node into prefix operators.
  * Example: + - a becomes (+ (- (a)))
@@ -168,7 +173,11 @@ sre.SemanticProcessor.prototype.prefixNode_ = function(node, prefixes) {
       prefixes, sre.SemanticPred.isAttribute('role', 'SUBTRACTION'));
   var newNode = sre.SemanticProcessor.getInstance().concatNode_(
       node, negatives.comp.pop(), sre.SemanticAttr.Type.PREFIXOP);
-
+  if (newNode.contentNodes.length === 1 &&
+      newNode.contentNodes[0].role === sre.SemanticAttr.Role.ADDITION &&
+      newNode.contentNodes[0].textContent === '+') {
+    newNode.role = sre.SemanticAttr.Role.POSITIVE;
+  }
   while (negatives.rel.length > 0) {
     newNode = sre.SemanticProcessor.getInstance().concatNode_(
         newNode, [negatives.rel.pop()], sre.SemanticAttr.Type.PREFIXOP);
@@ -207,13 +216,21 @@ sre.SemanticProcessor.prototype.postfixNode_ = function(node, postfixes) {
  * @return {!sre.SemanticNode} The new semantic text node.
  */
 sre.SemanticProcessor.prototype.text = function(content, font, type) {
+  if (!content) {
+    return sre.SemanticProcessor.getInstance().factory_.makeEmptyNode();
+  }
   var leaf = sre.SemanticProcessor.getInstance().factory_.
       makeLeafNode(content, font);
+  // TODO (simons): Here check if there is already a type or if we can compute
+  // an interesting number role. Than use this.
+  leaf.updateContent(content, true);
   leaf.type = sre.SemanticAttr.Type.TEXT;
   if (type === 'MS') {
     leaf.role = sre.SemanticAttr.Role.STRING;
   }
   sre.SemanticProcessor.exprFont_(leaf);
+  // TODO (simons): Process single element in text. E.g., check if a text
+  //      element represents a function or a single letter, number, etc.
   return leaf;
 };
 
@@ -887,11 +904,76 @@ sre.SemanticProcessor.prototype.horizontalFencedNode_ = function(
   var newNode = sre.SemanticProcessor.getInstance().factory_.makeBranchNode(
       sre.SemanticAttr.Type.FENCED, [childNode], [ofence, cfence]);
   if (ofence.role === sre.SemanticAttr.Role.OPEN) {
-    newNode.role = sre.SemanticAttr.Role.LEFTRIGHT;
+    // newNode.role = sre.SemanticAttr.Role.LEFTRIGHT;
+    this.classifyHorizontalFence_(newNode);
+    this.propagateComposedFunction(newNode);
   } else {
     newNode.role = ofence.role;
   }
   return sre.SemanticProcessor.rewriteFencedNode_(newNode);
+};
+
+
+/**
+ * Classifies a horizontally fenced semantic node, using heuristics to determine
+ * certain set types, intervals etc.
+ * @param {sre.SemanticNode} node A fenced semantic node.
+ * @private
+ */
+sre.SemanticProcessor.prototype.classifyHorizontalFence_ = function(node) {
+  node.role = sre.SemanticAttr.Role.LEFTRIGHT;
+  var children = node.childNodes;
+  if (!sre.SemanticPred.isSetNode(node) || children.length > 1) {
+    return;
+  }
+  var type = children[0].type;
+  if (children.length === 0 ||
+      children[0].type === sre.SemanticAttr.Type.EMPTY) {
+    node.role = sre.SemanticAttr.Role.SETEMPTY;
+    return;
+  }
+  if (type === sre.SemanticAttr.Type.IDENTIFIER ||
+      type === sre.SemanticAttr.Type.NUMBER) {
+    node.role = sre.SemanticAttr.Role.SETSINGLE;
+    return;
+  }
+  var role = children[0].role;
+  if (type !== sre.SemanticAttr.Type.PUNCTUATED ||
+      role !== sre.SemanticAttr.Role.SEQUENCE) {
+    return;
+  }
+  if (children[0].contentNodes[0].role === sre.SemanticAttr.Role.COMMA) {
+    node.role = sre.SemanticAttr.Role.SETCOLLECT;
+    return;
+  }
+  if (children[0].contentNodes.length === 1 &&
+      (children[0].contentNodes[0].role === sre.SemanticAttr.Role.VBAR ||
+       children[0].contentNodes[0].role === sre.SemanticAttr.Role.COLON)) {
+    node.role = sre.SemanticAttr.Role.SETEXT;
+    this.setExtension_(node);
+    return;
+  }
+  // TODO (sorge): Intervals after the Bra-Ket heuristic.
+};
+
+
+// TODO: (MS2.3|simons) This is a rather crude heuristic. Should be improved
+//       once we have improved triaging of symbols.
+//       Also needs unit tests!
+/**
+ * Classifies content in the extension part of a set. Only works if we have
+ * assured that a set is indeed and exteded set.
+ * @param {sre.SemanticNode} set A semantic node representing an extended set.
+ * @private
+ */
+sre.SemanticProcessor.prototype.setExtension_ = function(set) {
+  var extender = set.childNodes[0].childNodes[0];
+  if (extender && extender.type === sre.SemanticAttr.Type.INFIXOP &&
+      extender.contentNodes.length === 1 &&
+      extender.contentNodes[0].role === sre.SemanticAttr.Role.UNKNOWN
+  ) {
+    extender.contentNodes[0].role = sre.SemanticAttr.Role.SETEXT;
+  }
 };
 
 
@@ -1141,6 +1223,11 @@ sre.SemanticProcessor.CLASSIFY_FUNCTION_[sre.SemanticAttr.Role.PREFIXFUNC] =
     'prefix';
 sre.SemanticProcessor.CLASSIFY_FUNCTION_[sre.SemanticAttr.Role.LIMFUNC] =
     'prefix';
+// TODO (WS2.3): Should go into clearspeak specific parser/processor?
+sre.SemanticProcessor.CLASSIFY_FUNCTION_[sre.SemanticAttr.Role.SIMPLEFUNC] =
+    'prefix';
+sre.SemanticProcessor.CLASSIFY_FUNCTION_[sre.SemanticAttr.Role.COMPFUNC] =
+    'prefix';
 
 
 /**
@@ -1226,24 +1313,52 @@ sre.SemanticProcessor.prototype.getFunctionArgs_ = function(
       break;
     case 'prefix':
       if (rest[0] && rest[0].type === sre.SemanticAttr.Type.FENCED) {
+        // TODO: (MS2.3|simons) This needs to be made more robust!  Currently we
+        //       reset to eliminate sets. Once we include bra-ket heuristics,
+        //       this might be incorrect.
+        //
+        var arg = rest.shift();
+        if (arg.role !== sre.SemanticAttr.Role.NEUTRAL) {
+          arg.role = sre.SemanticAttr.Role.LEFTRIGHT;
+        }
         funcNode = sre.SemanticProcessor.getInstance().functionNode_(
-            func, /** @type {!sre.SemanticNode} */ (rest.shift()));
+            func, /** @type {!sre.SemanticNode} */ (arg));
         rest.unshift(funcNode);
         return rest;
       }
-    case 'bigop':
       var partition = sre.SemanticProcessor.sliceNodes_(
           rest, sre.SemanticPred.isPrefixFunctionBoundary);
+      if (!partition.head.length) {
+        if (!partition.div ||
+            !sre.SemanticPred.isAttribute('type', 'APPL')(partition.div)) {
+          rest.unshift(func);
+          return rest;
+        }
+        var arg = partition.div;
+      } else {
+        arg = sre.SemanticProcessor.getInstance().row(partition.head);
+        if (partition.div) {
+          partition.tail.unshift(partition.div);
+        }
+      }
+      // TODO: (simons) If we have a prefix/simple function or implicit with
+      //       prefix/simple function children only (i.e., a function composition)
+      //       then we combine them via a function composition. Function
+      //       composition is currently implicit, but we might want to remember
+      //       this a bit better.
+      funcNode = sre.SemanticProcessor.getInstance().functionNode_(func, arg);
+      partition.tail.unshift(funcNode);
+      return partition.tail;
+      break;
+    case 'bigop':
+      var partition = sre.SemanticProcessor.sliceNodes_(
+          rest, sre.SemanticPred.isBigOpBoundary);
       if (!partition.head.length) {
         rest.unshift(func);
         return rest;
       }
       var arg = sre.SemanticProcessor.getInstance().row(partition.head);
-      if (heuristic === 'prefix') {
-        funcNode = sre.SemanticProcessor.getInstance().functionNode_(func, arg);
-      } else {
-        funcNode = sre.SemanticProcessor.getInstance().bigOpNode_(func, arg);
-      }
+      funcNode = sre.SemanticProcessor.getInstance().bigOpNode_(func, arg);
       if (partition.div) {
         partition.tail.unshift(partition.div);
       }
@@ -1258,7 +1373,12 @@ sre.SemanticProcessor.prototype.getFunctionArgs_ = function(
       var firstArg = rest[0];
       if (firstArg.type === sre.SemanticAttr.Type.FENCED &&
           firstArg.role !== sre.SemanticAttr.Role.NEUTRAL &&
-          sre.SemanticPred.isSimpleFunction(firstArg)) {
+          sre.SemanticPred.isSimpleFunctionScope(firstArg)) {
+        // TODO: (MS2.3|simons) This needs to be made more robust!  Currently we
+        //       reset to eliminate sets. Once we include bra-ket heuristics,
+        //       this might be incorrect.
+        //
+        firstArg.role = sre.SemanticAttr.Role.LEFTRIGHT;
         sre.SemanticProcessor.propagateFunctionRole_(
             func, sre.SemanticAttr.Role.SIMPLEFUNC);
         funcNode = sre.SemanticProcessor.getInstance().functionNode_(
@@ -1429,7 +1549,6 @@ sre.SemanticProcessor.getFunctionOp_ = function(tree, pred) {
 };
 
 
-//TODO: (MOSS) WP 2.1
 // Improve table recognition, multiline alignments for pausing.
 // Maybe labels, interspersed text etc.
 //
@@ -1605,8 +1724,33 @@ sre.SemanticProcessor.tableToMultiline = function(table) {
   for (var i = 0, row; row = table.childNodes[i]; i++) {
     sre.SemanticProcessor.rowToLine_(row, sre.SemanticAttr.Role.MULTILINE);
   }
+  if (table.childNodes.length === 1 &&
+      sre.SemanticPred.isFencedElement(table.childNodes[0].childNodes[0])) {
+    sre.SemanticProcessor.tableToMatrixOrVector_(
+        sre.SemanticProcessor.rewriteFencedLine_(table));
+  }
   sre.SemanticProcessor.binomialForm_(table);
   sre.SemanticProcessor.classifyMultiline(table);
+};
+
+
+// TODO: (Simons) Is this heuristic really what we want? Make it selectable?
+/**
+ * Heuristic to rewrite a single fenced line in a table into a square matrix.
+ * @param {!sre.SemanticNode} table The node to be rewritten.
+ * @return {!sre.SemanticNode} The rewritten node.
+ * @private
+ */
+sre.SemanticProcessor.rewriteFencedLine_ = function(table) {
+  var line = table.childNodes[0];
+  var fenced = table.childNodes[0].childNodes[0];
+  var element = table.childNodes[0].childNodes[0].childNodes[0];
+  fenced.parent = table.parent;
+  table.parent = fenced;
+  element.parent = line;
+  fenced.childNodes = [table];
+  line.childNodes = [element];
+  return fenced;
 };
 
 
@@ -1877,11 +2021,13 @@ sre.SemanticProcessor.prototype.fractionNode_ = function(denom, enume) {
   var newNode = sre.SemanticProcessor.getInstance().factory_.makeBranchNode(
       sre.SemanticAttr.Type.FRACTION, [denom, enume], []);
   newNode.role = newNode.childNodes.every(function(x) {
-    return sre.SemanticPred.isAttribute('role', 'INTEGER')(x);
+    return sre.SemanticPred.isAttribute('type', 'NUMBER')(x) &&
+        sre.SemanticPred.isAttribute('role', 'INTEGER')(x);
   }) ? sre.SemanticAttr.Role.VULGAR :
       newNode.childNodes.every(function(x) {
         return sre.SemanticPred.isAttribute('role', 'UNIT')(x);
       }) ? sre.SemanticAttr.Role.UNIT : sre.SemanticAttr.Role.DIVISION;
+  this.propagateSimpleFunction(newNode);
   return newNode;
 };
 
@@ -2275,4 +2421,308 @@ sre.SemanticProcessor.MATHJAX_FONTS = {
 sre.SemanticProcessor.prototype.font = function(font) {
   var mathjaxFont = sre.SemanticProcessor.MATHJAX_FONTS[font];
   return mathjaxFont ? mathjaxFont : /** @type {sre.SemanticAttr.Font} */(font);
+};
+
+
+/**
+ * Finds composed functions, i.e., simple functions that are either composed
+ * with an infix operation or fraction and rewrites their role accordingly.
+ * Currently restricted to Clearspeak!
+ * @param {!sre.SemanticNode} node The semantic node to test.
+ */
+// TODO: (MS2.3|simons): This needs to be a special annotator!
+sre.SemanticProcessor.prototype.propagateSimpleFunction = function(node) {
+  if (sre.Engine.getInstance().domain !== 'clearspeak') {
+    return;
+  }
+  if ((node.type === sre.SemanticAttr.Type.INFIXOP ||
+       node.type === sre.SemanticAttr.Type.FRACTION) &&
+      node.childNodes.every(sre.SemanticPred.isSimpleFunction)) {
+    node.role = sre.SemanticAttr.Role.COMPFUNC;
+  }
+};
+
+
+/**
+ * Propagates the role of composed function to surrounding fences.
+ * Currently restricted to Clearspeak!
+ * @param {!sre.SemanticNode} node The semantic node to test.
+ */
+// TODO: (MS2.3|simons): This needs to be a special annotator!
+sre.SemanticProcessor.prototype.propagateComposedFunction = function(node) {
+  if (sre.Engine.getInstance().domain !== 'clearspeak') {
+    return;
+  }
+  if (node.type === sre.SemanticAttr.Type.FENCED &&
+      node.childNodes[0].role === sre.SemanticAttr.Role.COMPFUNC) {
+    node.role = sre.SemanticAttr.Role.COMPFUNC;
+  }
+};
+
+
+//
+// Inference rules (Simons)
+//
+// This is top down parsing, so we have to keep the bottom-up processor
+// available.
+//
+/**
+ * Parses a proof node.
+ * @param {Element} node The node.
+ * @param {string} semantics Its semantics attribute value.
+ * @param {function(!Array.<Element>): !Array.<sre.SemanticNode>} parse The
+ *     current semantic parser for list of nodes.
+ * @return {!sre.SemanticNode} The semantic node.
+ */
+sre.SemanticProcessor.proof = function(node, semantics, parse) {
+  var attrs = sre.SemanticProcessor.separateSemantics(semantics);
+  return sre.SemanticProcessor.getInstance().proof(node, attrs, parse);
+};
+
+
+/**
+ * Parses a proof node.
+ * @param {Element} node The node.
+ * @param {Object.<string>} semantics Association of semantic keys to values.
+ * @param {function(!Array.<Element>): !Array.<sre.SemanticNode>} parse The
+ *     current semantic parser for list of nodes.
+ * @return {!sre.SemanticNode} The semantic node for the proof.
+ */
+sre.SemanticProcessor.prototype.proof = function(node, semantics, parse) {
+  if (!semantics['inference'] && !semantics['axiom']) {
+    console.log('Noise');
+    // do some preprocessing!
+    // Put in an invisible comma!
+  }
+  // Axiom case!
+  if (semantics['axiom']) {
+    var cleaned = this.cleanInference(node.childNodes);
+    var axiom = cleaned.length ? this.factory_.makeBranchNode(
+        sre.SemanticAttr.Type.INFERENCE, parse(cleaned), []) :
+        this.factory_.makeEmptyNode();
+    axiom.role = sre.SemanticAttr.Role.AXIOM;
+    axiom.mathmlTree = node;
+    return axiom;
+  }
+  var inference = this.inference(node, semantics, parse);
+  if (semantics['proof']) {
+    inference.role = sre.SemanticAttr.Role.PROOF;
+    inference.childNodes[0].role = sre.SemanticAttr.Role.FINAL;
+  }
+  return inference;
+};
+
+
+/**
+ * Parses a single inference node.
+ * @param {Element} node The node.
+ * @param {Object.<string>} semantics Association of semantic keys to values.
+ * @param {function(!Array.<Element>): !Array.<sre.SemanticNode>} parse The
+ *     current semantic parser for list of nodes.
+ * @return {!sre.SemanticNode} The semantic node for the inference.
+ */
+sre.SemanticProcessor.prototype.inference = function(node, semantics, parse) {
+  if (semantics['inferenceRule']) {
+    var formulas = this.getFormulas(node, [], parse);
+    var inference = this.factory_.makeBranchNode(
+        sre.SemanticAttr.Type.INFERENCE,
+        [formulas.conclusion, formulas.premises], []);
+    // Setting role
+    return inference;
+  }
+  var label = semantics['labelledRule'];
+  var children = sre.DomUtil.toArray(node.childNodes);
+  var content = [];
+  if (label === 'left' || label === 'both') {
+    content.push(this.getLabel(node, children, parse, sre.SemanticAttr.Role.LEFT));
+  }
+  if (label === 'right' || label === 'both') {
+    content.push(this.getLabel(node, children, parse, sre.SemanticAttr.Role.RIGHT));
+  }
+  var formulas = this.getFormulas(node, children, parse);
+  var inference = this.factory_.makeBranchNode(
+      sre.SemanticAttr.Type.INFERENCE,
+      [formulas.conclusion, formulas.premises], content);
+  // Setting role
+  inference.mathmlTree = node;
+  return inference;
+};
+
+
+/**
+ * Parses the label of an inference rule.
+ * @param {Element} node The inference node.
+ * @param {Array.<Element>} children The node's children containing the label.
+ * @param {function(!Array.<Element>): !Array.<sre.SemanticNode>} parse The
+ *     current semantic parser for list of nodes.
+ * @param {string} side The side the label is on.
+ * @return {!sre.SemanticNode} The semantic node for the label.
+ */
+sre.SemanticProcessor.prototype.getLabel = function(node, children, parse, side) {
+  var label = this.findNestedRow(children, 'prooflabel', side);
+  var sem = this.factory_.makeBranchNode(
+      sre.SemanticAttr.Type.RULELABEL,
+      parse(sre.DomUtil.toArray(label.childNodes)), []);
+  sem.role = /** @type {sre.SemanticAttr.Role} */(side);
+  sem.mathmlTree = label;
+  return sem;
+};
+
+
+/**
+ * Retrieves and parses premises and conclusion of an inference rule.
+ * @param {Element} node The inference rule node.
+ * @param {Array.<Element>} children The node's children containing.
+ * @param {function(!Array.<Element>): !Array.<sre.SemanticNode>} parse The
+ *     current semantic parser for list of nodes.
+ * @return {{conclusion: sre.SemanticNode, premises: sre.SemanticNode}} A pair
+ *       of conclusion and premises.
+ */
+sre.SemanticProcessor.prototype.getFormulas = function(node, children, parse) {
+  var inf = children.length ?
+      this.findNestedRow(children, 'inferenceRule') : node;
+  var up = sre.SemanticProcessor.getSemantics(inf)['inferenceRule'] === 'up';
+  var premRow = up ? inf.childNodes[1] : inf.childNodes[0];
+  var concRow = up ? inf.childNodes[0] : inf.childNodes[1];
+  var premTable = premRow.childNodes[0].childNodes[0];
+  var topRow = sre.DomUtil.toArray(premTable.childNodes[0].childNodes);
+  var premNodes = [];
+  var i = 1;
+  for (var cell of topRow) {
+    if (i % 2) {
+      premNodes.push(cell.childNodes[0]);
+    }
+    i++;
+  }
+  var premises = parse(premNodes);
+  var conclusion =
+      parse(sre.DomUtil.toArray(concRow.childNodes[0].childNodes))[0];
+  var prem = this.factory_.makeBranchNode(
+      sre.SemanticAttr.Type.PREMISES, premises, []);
+  prem.mathmlTree = /** @type {Element} */(premTable);
+  var conc = this.factory_.makeBranchNode(
+      sre.SemanticAttr.Type.CONCLUSION, [conclusion], []);
+  conc.mathmlTree = /** @type {Element} */(concRow.childNodes[0].childNodes[0]);
+  return {conclusion: conc, premises: prem};
+};
+
+
+/**
+ * Find a inference element nested in a row.
+ * @param {Array.<Element>} nodes A node list.
+ * @param {string} semantic A semantic key.
+ * @param {string=} opt_value Optionally the semantic value.
+ * @return {Element} The first element in that row that contains the semantic key
+ *     (and has its value if the latter is given.)
+ */
+sre.SemanticProcessor.prototype.findNestedRow = function(
+    nodes, semantic, opt_value) {
+  return this.findNestedRow_(nodes, semantic, 0, opt_value);
+};
+
+
+/**
+ * Searches the given row of elements for first element with the given semantic
+ * key or key/value pair if a value is not null. Ignores space elements and
+ * descents at most 3 levels.
+ * @param {Array.<Element>} nodes A node list.
+ * @param {string} semantic A semantic key.
+ * @param {number} level The maximum level to search.
+ * @param {string|undefined} value Optionally the semantic value.
+ * @return {Element} The first matching element in the row.
+ */
+sre.SemanticProcessor.prototype.findNestedRow_ = function(
+    nodes, semantic, level, value) {
+  if (level > 3) {
+    return null;
+  }
+  for (var i = 0, node; node = nodes[i]; i++) {
+    var tag = sre.DomUtil.tagName(node);
+    if (tag !== 'MSPACE') {
+      if (tag === 'MROW') {
+        return this.findNestedRow_(
+            sre.DomUtil.toArray(node.childNodes), semantic, level + 1, value);
+      }
+      if (sre.SemanticProcessor.findSemantics(node, semantic, value)) {
+        return node;
+      }
+    }
+  }
+  return null;
+};
+
+
+/**
+ * Removes mspaces in a row.
+ * @param {!NodeList} nodes The list of nodes.
+ * @return {!Array.<Element>} The list with all space elements removed.
+ */
+sre.SemanticProcessor.prototype.cleanInference = function(nodes) {
+  return sre.DomUtil.toArray(nodes).filter(function(x) {
+    return sre.DomUtil.tagName(x) !== 'MSPACE';
+  });
+};
+
+
+// Utilities
+// This one should be prefix specific!
+/**
+ *
+ * @param {Element} node The mml node.
+ * @param {string} attr The attribute name.
+ * @param {string=} opt_value The attribute value.
+ * @return {boolean} True if the semantic attribute is in the node.
+ */
+sre.SemanticProcessor.findSemantics = function(node, attr, opt_value) {
+  let value = (opt_value == null) ? null : opt_value;
+  let semantics = sre.SemanticProcessor.getSemantics(node);
+  if (!semantics) {
+    return false;
+  }
+  if (!semantics[attr]) {
+    return false;
+  }
+  return value == null ? true : semantics[attr] === value;
+};
+
+
+/**
+ * Retrieves the content of a semantic attribute in a node as an association
+ * list.
+ * @param {Element} node The mml node.
+ * @return {Object.<string>} The association list.
+ */
+sre.SemanticProcessor.getSemantics = function(node) {
+  let semantics = node.getAttribute('semantics');
+  if (!semantics) {
+    return null;
+  }
+  return sre.SemanticProcessor.separateSemantics(semantics);
+};
+
+
+/**
+ * Removes prefix from a semantic attribute.
+ * @param {string} name The semantic attribute.
+ * @return {string} Name with prefix removed.
+ */
+sre.SemanticProcessor.removePrefix = function(name) {
+  var [prefix, ...rest] = name.split('_');
+  return rest.join('_');
+};
+
+
+/**
+ * Separates a semantic attribute into it's components.
+ * @param {string} attr Content of the semantic attribute.
+ * @return {Object.<string>} Association list of semantic attributes.
+ */
+sre.SemanticProcessor.separateSemantics = function(attr) {
+  var result = {};
+  attr.split(';').
+      forEach(function(x) {
+        var [name, value] = x.split(':');
+        result[sre.SemanticProcessor.removePrefix(name)] = value;
+      });
+  return result;
 };

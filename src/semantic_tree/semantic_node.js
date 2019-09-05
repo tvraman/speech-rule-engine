@@ -73,6 +73,18 @@ sre.SemanticNode = function(id) {
    * @type {!Array.<sre.SemanticNode>}
    */
   this.contentNodes = [];
+
+  /**
+   * @type {!Object.<Array.<string>>}
+   */
+  this.annotation = {};
+
+  /**
+   * Collection of external attributes.
+   * @type {!Object.<string>}
+   */
+  this.attributes = {};
+
 };
 
 
@@ -88,10 +100,31 @@ sre.SemanticNode.prototype.querySelectorAll = function(pred) {
   for (var i = 0, child; child = this.childNodes[i]; i++) {
     result = result.concat(child.querySelectorAll(pred));
   }
+  for (var i = 0, content; content = this.contentNodes[i]; i++) {
+    result = result.concat(content.querySelectorAll(pred));
+  }
   if (pred(this)) {
     result.unshift(this);
   }
   return result;
+};
+
+
+/**
+ * The attributes of a semantic node.
+ * @enum {string}
+ */
+sre.SemanticNode.Attribute = {
+  EMBELLISHED: 'embellished',
+  FENCEPOINTER: 'fencepointer',
+  FONT: 'font',
+  ID: 'id',
+  ANNOTATION: 'annotation',
+  ROLE: 'role',
+  TYPE: 'type',
+  CHILDREN: 'children',
+  CONTENT: 'content',
+  TEXT: '$t'
 };
 
 
@@ -122,10 +155,12 @@ sre.SemanticNode.prototype.xml = function(xml, opt_brief) {
   }
   node.textContent = this.textContent;
   if (this.contentNodes.length > 0) {
-    node.appendChild(xmlNodeList('content', this.contentNodes));
+    node.appendChild(xmlNodeList(sre.SemanticNode.Attribute.CONTENT,
+                                 this.contentNodes));
   }
   if (this.childNodes.length > 0) {
-    node.appendChild(xmlNodeList('children', this.childNodes));
+    node.appendChild(xmlNodeList(sre.SemanticNode.Attribute.CHILDREN,
+                                 this.childNodes));
   }
   return node;
 };
@@ -139,7 +174,7 @@ sre.SemanticNode.prototype.xml = function(xml, opt_brief) {
 sre.SemanticNode.prototype.toString = function(opt_brief) {
   var xmls = new sre.SystemExternal.xmldom.XMLSerializer();
   var dp = new sre.SystemExternal.xmldom.DOMParser();
-  var xml = dp.parseFromString('', 'text/xml');
+  var xml = dp.parseFromString('<snode/>', 'text/xml');
   return xmls.serializeToString(this.xml(xml, opt_brief));
 };
 
@@ -150,27 +185,105 @@ sre.SemanticNode.prototype.toString = function(opt_brief) {
  * @private
  */
 sre.SemanticNode.prototype.xmlAttributes_ = function(node) {
-  node.setAttribute('role', this.role);
+  var attributes = this.allAttributes();
+  for (var i = 0, attr; attr = attributes[i]; i++) {
+    node.setAttribute(attr[0], attr[1]);
+  }
+  this.addExternalAttributes_(node);
+};
+
+
+/**
+ * Computes a list of attributes of the semantic node.
+ * @return {!Array.<Array.<sre.SemanticNode.Attribute, string>>} A list of
+ *     pairs.
+ */
+sre.SemanticNode.prototype.allAttributes = function() {
+  var attributes = [];
+  attributes.push([sre.SemanticNode.Attribute.ROLE, this.role]);
   if (this.font != sre.SemanticAttr.Font.UNKNOWN) {
-    node.setAttribute('font', this.font);
+    attributes.push([sre.SemanticNode.Attribute.FONT, this.font]);
+  }
+  if (Object.keys(this.annotation).length) {
+    attributes.push([sre.SemanticNode.Attribute.ANNOTATION, this.xmlAnnotation()]);
   }
   if (this.embellished) {
-    node.setAttribute('embellished', this.embellished);
+    attributes.push([sre.SemanticNode.Attribute.EMBELLISHED, this.embellished]);
   }
   if (this.fencePointer) {
-    node.setAttribute('fencepointer', this.fencePointer);
+    attributes.push([sre.SemanticNode.Attribute.FENCEPOINTER,
+                     this.fencePointer]);
   }
-  node.setAttribute('id', this.id);
+  attributes.push([sre.SemanticNode.Attribute.ID, this.id]);
+  return attributes;
+};
+
+
+/**
+ * Adds the external attributes for this node to its XML representation.
+ * @param {Node} node The XML node.
+ */
+sre.SemanticNode.prototype.addExternalAttributes_ = function(node) {
+  for (var attr in this.attributes) {
+    node.setAttribute(attr, this.attributes[attr]);
+  }
+};
+
+
+/**
+ * Turns annotation structure into an attribute.
+ * @return {string} XML string for annotation.
+ */
+sre.SemanticNode.prototype.xmlAnnotation = function() {
+  var result = [];
+  for (var key in this.annotation) {
+    this.annotation[key].forEach(function(mean) {
+      result.push(key + ':' + mean);
+    });
+  }
+  return result.join(';');
+};
+
+
+/**
+ * Turns node into JSON format.
+ * @return {JSONType} The JSON object for the node.
+ */
+sre.SemanticNode.prototype.toJson = function() {
+  var json = /** @type {JSONType} */({});
+  json[sre.SemanticNode.Attribute.TYPE] = this.type;
+  var attributes = this.allAttributes();
+  for (var i = 0, attr; attr = attributes[i]; i++) {
+    json[attr[0]] = attr[1].toString();
+  }
+  if (this.textContent) {
+    json[sre.SemanticNode.Attribute.TEXT] = this.textContent;
+  }
+  if (this.childNodes.length) {
+    json[sre.SemanticNode.Attribute.CHILDREN] =
+        this.childNodes.map(function(child) {return child.toJson();});
+  }
+  if (this.contentNodes.length) {
+    json[sre.SemanticNode.Attribute.CONTENT] =
+        this.contentNodes.map(function(child) {return child.toJson();});
+  }
+  return json;
 };
 
 
 /**
  * Updates the content of the node thereby possibly changing type and role.
  * @param {string} content The new content string.
+ * @param {boolean=} opt_text Text indicator. If true non-breaking spaces are
+ *     retained.
  */
-sre.SemanticNode.prototype.updateContent = function(content) {
+sre.SemanticNode.prototype.updateContent = function(content, opt_text = false) {
   // Remove superfluous whitespace only if it is not the only content!
-  var newContent = content.trim();
+  // But without removing non-breaking spaces if we have a text.
+  var newContent = opt_text ?
+      content.replace(/^[ \f\n\r\t\v​]*/, '').replace(/[ \f\n\r\t\v​]*$/, '') :
+      content.trim();
+  // TODO (simons): If content contains a space, then assume type to be text.
   content = (content && !newContent) ? content : newContent;
   if (this.textContent == content) {
     return;
@@ -312,24 +425,35 @@ sre.SemanticNode.prototype.equals = function(node) {
 
 /**
  * Convenience method to display the whole tree and its elements.
- * @param {number} depth The depth of the tree.
  */
-sre.SemanticNode.prototype.displayTree = function(depth) {
+sre.SemanticNode.prototype.displayTree = function() {
+  console.info(this.displayTree_(0));
+};
+
+
+/**
+ * Convenience method to display the whole tree and its elements.
+ * @param {number} depth The depth of the tree.
+ * @return {string} String with nested tree display.
+ */
+sre.SemanticNode.prototype.displayTree_ = function(depth) {
   depth++;
   var depthString = Array(depth).join('  ');
-  console.log(depthString + this.toString());
-  console.log(depthString + 'MathmlTree:');
-  console.log(depthString + this.mathmlTreeString_());
-  console.log(depthString + 'MathML:');
+  var result = '';
+  result += '\n' + depthString + this.toString();
+  result += '\n' + depthString + 'MathmlTree:';
+  result += '\n' + depthString + this.mathmlTreeString_();
+  result += '\n' + depthString + 'MathML:';
   for (var i = 0, mml; mml = this.mathml[i]; i++) {
-    console.log(depthString + mml.toString());
+    result += '\n' + depthString + mml.toString();
   }
-  console.log(depthString + 'Begin Content');
-  this.contentNodes.forEach(function(x) {x.displayTree(depth);});
-  console.log(depthString + 'End Content');
-  console.log(depthString + 'Begin Children');
-  this.childNodes.forEach(function(x) {x.displayTree(depth);});
-  console.log(depthString + 'End Children');
+  result += '\n' + depthString + 'Begin Content';
+  this.contentNodes.forEach(function(x) {result += x.displayTree_(depth);});
+  result += '\n' + depthString + 'End Content';
+  result += '\n' + depthString + 'Begin Children';
+  this.childNodes.forEach(function(x) {result += x.displayTree_(depth);});
+  result += '\n' + depthString + 'End Children';
+  return result;
 };
 
 
@@ -343,3 +467,76 @@ sre.SemanticNode.prototype.mathmlTreeString_ = function() {
 };
 
 
+/**
+ * Adds a new annotation annotation if annotation is not empty.
+ * @param {string} domain The domain.
+ * @param {string} annotation The annotation.
+ */
+sre.SemanticNode.prototype.addAnnotation = function(domain, annotation) {
+  if (annotation) {
+    this.addAnnotation_(domain, annotation);
+  }
+};
+
+
+/**
+ * Adds a new annotation annotation.
+ * @param {string} domain The domain.
+ * @param {string} annotation The annotation.
+ * @private
+ */
+sre.SemanticNode.prototype.addAnnotation_ = function(domain, annotation) {
+  var content = this.annotation[domain];
+  if (content) {
+    content.push(annotation);
+  } else {
+    this.annotation[domain] = [annotation];
+  }
+};
+
+
+/**
+ * Retrieves the annotation annotations for a particular domain.
+ * @param {string} domain The domain.
+ * @return {Array.<string>} The annotation annotations.
+ */
+sre.SemanticNode.prototype.getAnnotation = function(domain) {
+  var content = this.annotation[domain];
+  return content ? content : [];
+};
+
+
+/**
+ * Checks if a node has a particular annotation.
+ * @param {string} domain The domain.
+ * @param {string} annotation The annotation.
+ * @return {boolean} True if the annotation is contained.
+ */
+sre.SemanticNode.prototype.hasAnnotation = function(domain, annotation) {
+  var content = this.annotation[domain];
+  if (!content) {
+    return false;
+  }
+  return content.indexOf(annotation) !== -1;
+};
+
+
+/**
+ * Parses a annotation string as given, for example, in an attribute.
+ * @param {string} stateStr The state string for the annotation.
+ */
+sre.SemanticNode.prototype.parseAnnotation = function(stateStr) {
+  var annotations = stateStr.split(';');
+  for (var i = 0, l = annotations.length; i < l; i++) {
+    var annotation = annotations[i].split(':');
+    this.addAnnotation(annotation[0], annotation[1]);
+  }
+};
+
+
+/**
+ * @return {sre.SemanticMeaning} The semantic meaning of the node.
+ */
+sre.SemanticNode.prototype.meaning = function() {
+  return {type: this.type, role: this.role, font: this.font};
+};

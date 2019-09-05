@@ -28,6 +28,7 @@ goog.provide('sre.SemanticTree');
 
 goog.require('sre.DomUtil');
 goog.require('sre.MathUtil');
+goog.require('sre.SemanticAnnotations');
 goog.require('sre.SemanticMathml');
 goog.require('sre.SemanticNode');
 goog.require('sre.SystemExternal');
@@ -53,6 +54,18 @@ sre.SemanticTree = function(mml) {
 
   /** @type {!sre.SemanticNode} */
   this.root = this.parser.parse(mml);
+
+  this.collator = this.parser.getFactory().leafMap.collateMeaning();
+
+  var newDefault = this.collator.newDefault();
+  if (newDefault) {
+    // Reparse!
+    this.parser = new sre.SemanticMathml();
+    this.parser.getFactory().defaultMap = newDefault;
+    this.root = this.parser.parse(mml);
+  }
+
+  sre.SemanticAnnotations.getInstance().annotate(this.root);
 
 };
 
@@ -147,7 +160,7 @@ sre.SemanticTree.prototype.formatXml = function(opt_brief) {
  * Convenience method to display the whole tree and its elements.
  */
 sre.SemanticTree.prototype.displayTree = function() {
-  this.root.displayTree(0);
+  this.root.displayTree();
 };
 
 
@@ -166,3 +179,12 @@ sre.SemanticTree.prototype.replaceNode = function(oldNode, newNode) {
 };
 
 
+/**
+ * Turns tree into JSON format.
+ * @return {JSONType} The JSON object for the tree.
+ */
+sre.SemanticTree.prototype.toJson = function() {
+  var json = /** @type {JSONType} */({});
+  json['stree'] = this.root.toJson();
+  return json;
+};

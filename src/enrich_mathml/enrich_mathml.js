@@ -86,6 +86,7 @@ sre.EnrichMathml.Attribute = {
   FENCEPOINTER: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'fencepointer',
   FONT: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'font',
   ID: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'id',
+  ANNOTATION: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'annotation',
   OPERATOR: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'operator',
   PARENT: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'parent',
   PREFIX: sre.EnrichMathml.ATTRIBUTE_PREFIX_ + 'prefix',
@@ -170,7 +171,8 @@ sre.EnrichMathml.walkTree = function(semantic) {
   newNode = sre.EnrichMathml.rewriteMfenced(newNode);
   sre.EnrichMathml.mergeChildren_(newNode, childrenList);
   sre.EnrichMathml.setAttributes(newNode, semantic);
-  return sre.EnrichMathml.ascendNewNode(newNode);
+  let res = sre.EnrichMathml.ascendNewNode(newNode);
+  return res;
 };
 
 
@@ -542,7 +544,7 @@ sre.EnrichMathml.descendNode_ = function(node) {
 
 
 /**
- * Checks if the node is a unit child, meaning it is the only child of its
+ * Checks if the node is a unit child, annotation it is the only child of its
  * parent modulo ignored nodes.
  * @param {!Element} node The node to be tested.
  * @return {boolean} True if node is a legal unit child.
@@ -640,11 +642,11 @@ sre.EnrichMathml.makeIdList = function(nodes) {
  */
 sre.EnrichMathml.setAttributes = function(mml, semantic) {
   mml.setAttribute(sre.EnrichMathml.Attribute.TYPE, semantic.type);
-  mml.setAttribute(sre.EnrichMathml.Attribute.ROLE, semantic.role);
-  if (semantic.font != sre.Semantic.Font.UNKNOWN) {
-    mml.setAttribute(sre.EnrichMathml.Attribute.FONT, semantic.font);
+  var attributes = semantic.allAttributes();
+  for (var i = 0, attr; attr = attributes[i]; i++) {
+    mml.setAttribute(sre.EnrichMathml.Attribute[attr[0].toUpperCase()],
+                     attr[1]);
   }
-  mml.setAttribute(sre.EnrichMathml.Attribute.ID, semantic.id);
   if (semantic.childNodes.length) {
     mml.setAttribute(sre.EnrichMathml.Attribute.CHILDREN,
                      sre.EnrichMathml.makeIdList(semantic.childNodes));
@@ -655,14 +657,6 @@ sre.EnrichMathml.setAttributes = function(mml, semantic) {
   }
   if (semantic.parent) {
     mml.setAttribute(sre.EnrichMathml.Attribute.PARENT, semantic.parent.id);
-  }
-  if (semantic.embellished) {
-    mml.setAttribute(sre.EnrichMathml.Attribute.EMBELLISHED,
-                     semantic.embellished);
-  }
-  if (semantic.fencePointer) {
-    mml.setAttribute(sre.EnrichMathml.Attribute.FENCEPOINTER,
-                     semantic.fencePointer);
   }
 };
 
@@ -825,11 +819,11 @@ sre.EnrichMathml.formattedOutput = function(mml, expr, tree, opt_wiki) {
 sre.EnrichMathml.formattedOutput_ = function(element, name, wiki) {
   var output = sre.DomUtil.formatXml(element.toString());
   if (!wiki) {
-    console.log(output);
+    console.info(output);
     return;
   }
-  console.log(name + ':\n```html\n' +
-              sre.EnrichMathml.removeAttributePrefix(output) + '\n```\n');
+  console.info(name + ':\n```html\n' +
+      sre.EnrichMathml.removeAttributePrefix(output) + '\n```\n');
 };
 
 
@@ -849,6 +843,18 @@ sre.EnrichMathml.formattedOutput_ = function(element, name, wiki) {
 sre.EnrichMathml.removeAttributePrefix = function(mml) {
   return mml.toString().replace(
       new RegExp(sre.EnrichMathml.ATTRIBUTE_PREFIX_, 'g'), '');
+};
+
+
+/**
+ * Creates an data semantic attribute by adding the correct prefix.
+ * @param {string} attr The attribute.
+ * @return {sre.EnrichMathml.Attribute} The completed attribute.
+ */
+sre.EnrichMathml.addPrefix = function(attr) {
+  var upcase = attr.toUpperCase();
+  return sre.EnrichMathml.Attribute[upcase] ||
+      (sre.EnrichMathml.ATTRIBUTE_PREFIX_ + attr);
 };
 
 
@@ -887,7 +893,7 @@ sre.EnrichMathml.collapsePunctuated = function(semantic, opt_children) {
  * @param {!NodeList} nodes A list of nodes.
  */
 sre.EnrichMathml.printNodeList__ = function(title, nodes) {
-  console.log(title);
-  sre.DomUtil.toArray(nodes).forEach(function(x) {console.log(x.toString());});
-  console.log('<<<<<<<<<<<<<<<<<');
+  console.info(title);
+  sre.DomUtil.toArray(nodes).forEach(function(x) {console.info(x.toString());});
+  console.info('<<<<<<<<<<<<<<<<<');
 };

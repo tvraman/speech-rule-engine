@@ -24,7 +24,10 @@
 goog.provide('sre.SemanticNodeFactory');
 
 goog.require('sre.SemanticAttr');
+goog.require('sre.SemanticDefault');
+goog.require('sre.SemanticMeaningCollator');
 goog.require('sre.SemanticNode');
+goog.require('sre.SemanticNodeCollator');
 
 
 
@@ -37,17 +40,50 @@ sre.SemanticNodeFactory = function() {
    * @type {number}
    * @private
    */
-  this.idCounter_ = 0;
+  this.idCounter_ = -1;
+
+  /**
+   * @type {sre.SemanticNodeCollator}
+   */
+  this.leafMap = new sre.SemanticNodeCollator();
+
+  // /**
+  //  * @type {sre.SemanticMeaningCollator}
+  //  */
+  // this.leafMeaning = new sre.SemanticMeaningCollator();
+
+  /**
+   * @type {sre.SemanticDefault}
+   */
+  this.defaultMap = new sre.SemanticDefault();
 
 };
 
 
-/** Creates a new node object.
- * @return {sre.SemanticNode} The newly created node.
+/**
+ * Creates a new node object.
+ * @param {number=} opt_id Optional ID. It will be maxed with the current id.
+ * @return {!sre.SemanticNode} The newly created node.
  * @private
  */
-sre.SemanticNodeFactory.prototype.createNode_ = function() {
-  return new sre.SemanticNode(this.idCounter_++);
+sre.SemanticNodeFactory.prototype.createNode_ = function(opt_id) {
+  if (typeof opt_id !== 'undefined') {
+    var id = opt_id;
+    this.idCounter_ = Math.max(this.idCounter_, id);
+  } else {
+    id = ++this.idCounter_;
+  }
+  return new sre.SemanticNode(id);
+};
+
+
+/**
+ * Creates a new node object with a given id.
+ * @param {number} id The node id.
+ * @return {!sre.SemanticNode} The newly created node.
+ */
+sre.SemanticNodeFactory.prototype.makeNode = function(id) {
+  return this.createNode_(id);
 };
 
 
@@ -115,6 +151,14 @@ sre.SemanticNodeFactory.prototype.makeLeafNode = function(content, font) {
   }
   var node = this.makeContentNode(content);
   node.font = font || node.font;
+  // Lookup alternative meaning here!
+  var meaning = this.defaultMap.retrieveNode(node);
+  if (meaning) {
+    node.type = meaning.type;
+    node.role = meaning.role;
+    node.font = meaning.font;
+  }
+  this.leafMap.addNode(node);
   return node;
 };
 

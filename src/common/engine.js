@@ -20,6 +20,7 @@
  * @author volker.sorge@gmail.com (Volker Sorge)
  */
 goog.provide('sre.Engine');
+goog.provide('sre.Engine.Error');
 goog.provide('sre.Engine.Mode');
 
 goog.require('sre.BrowserUtil');
@@ -52,6 +53,13 @@ sre.Engine = function() {
   this.evaluator = sre.Engine.defaultEvaluator;
 
   /**
+   * @type {!sre.DynamicCstr.Parser}
+   */
+  this.defaultParser = new sre.DynamicCstr.Parser(sre.DynamicCstr.DEFAULT_ORDER);
+  this.parser = this.defaultParser;
+  this.parsers = {};
+
+  /**
    * @type {!sre.DynamicCstr}
    */
   this.dynamicCstr = sre.DynamicCstr.defaultCstr();
@@ -60,6 +68,12 @@ sre.Engine = function() {
    * @type {sre.DynamicCstr.Comparator}
    */
   this.comparator = null;
+
+  /**
+   * Maps domains to comparators.
+   * @type {Object.<string, function():sre.DynamicCstr.Comparator>}
+   */
+  this.comparators = {};
 
   /**
    * Current domain.
@@ -73,19 +87,23 @@ sre.Engine = function() {
    */
   this.style = 'short';
 
-
   /**
    * Current locale.
    * @type {string}
    */
   this.locale = sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.LOCALE];
 
+  /**
+   * Current modality.
+   * @type {string}
+   */
+  this.modality = sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.MODALITY];
 
   /**
    * Current walker mode.
    * @type {string}
    */
-  this.walker = 'Syntax';
+  this.walker = 'Table';
 
   /**
    * Semantics flag.
@@ -149,6 +167,18 @@ sre.Engine = function() {
   this.isEdge = false;
 
   /**
+   * Percentage of default rate used by external TTS. This can be used to scale
+   * pauses.
+   * @type {string}
+   */
+  this.rate = '100';
+
+  /**
+   * @type {boolean}
+   */
+  this.pprint = false;
+
+  /**
    * List of predicates for checking if the engine is set up.
    * @type {!Array.<function():boolean>}
    * @private
@@ -166,7 +196,8 @@ sre.Engine.personalityProps = {
   PITCH: 'pitch',
   RATE: 'rate',
   VOLUME: 'volume',
-  PAUSE: 'pause'
+  PAUSE: 'pause',
+  JOIN: 'join'
 };
 
 
@@ -200,7 +231,9 @@ sre.Engine.Speech = {
  */
 sre.Engine.Markup = {
   NONE: 'none',
+  PUNCTUATION: 'punctuation',
   SSML: 'ssml',
+  SSML_STEP: 'ssml_step',
   ACSS: 'acss',
   SABLE: 'sable',
   VOICEXML: 'voicexml'
@@ -258,3 +291,81 @@ sre.Engine.prototype.getAxisValues = function() {
 sre.Engine.defaultEvaluator = function(str, cstr) {
   return str;
 };
+
+
+// TODO: This might need a better place.
+/**
+ * @return {number} The current base rate.
+ */
+sre.Engine.prototype.getRate = function() {
+  var numeric = parseInt(this.rate, 10);
+  return isNaN(numeric) ? 100 : numeric;
+};
+
+
+
+/**
+ * The base error class for signaling SRE errors.
+ * @param {string} msg The error message.
+ * @constructor
+ * @extends {Error}
+ */
+sre.Engine.Error = function(msg) {
+  sre.Engine.Error.base(this, 'constructor');
+  this.message = msg || '';
+  this.name = 'SRE Error';
+};
+goog.inherits(sre.Engine.Error, Error);
+
+
+sre.Engine.BINARY_FEATURES = [
+  'strict', 'cache', 'semantics', 'structure', 'pprint'
+];
+
+
+sre.Engine.STRING_FEATURES = [
+  'markup', 'style', 'domain', 'speech', 'walker',
+  'locale', 'modality', 'rate'
+];
+
+
+/**
+ * Sets the dynamic constraint for the engine.
+ * @param {sre.DynamicCstr.Map=} opt_dynamic An optional
+ *    constraint mapping. If given it is parsed into the engines constraint
+ *    parameters.
+ */
+sre.Engine.prototype.setDynamicCstr = function(opt_dynamic) {
+  if (opt_dynamic) {
+    var keys = Object.keys(opt_dynamic);
+    for (var i = 0; i < keys.length; i++) {
+      var feature = /** @type {sre.DynamicCstr.Axis} */(keys[i]);
+      // Checks that we only have correct components.
+      if (sre.DynamicCstr.DEFAULT_ORDER.indexOf(feature) !== -1) {
+        var value = opt_dynamic[feature];
+        this[feature] = value;
+      }
+    }
+  }
+  sre.Engine.DOMAIN_TO_STYLES[this.domain] = this.style;
+  var dynamic = [this.locale, this.modality, this.domain, this.style].join('.');
+  var fallback = sre.DynamicProperties.create(
+      [sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.LOCALE]],
+      [sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.MODALITY]],
+      [sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.DOMAIN]],
+      ['short', sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.STYLE]]);
+  var comparator = this.comparators[this.domain];
+  var parser = this.parsers[this.domain];
+  this.parser = parser ? parser : this.defaultParser;
+  this.dynamicCstr = this.parser.parse(dynamic);
+  this.dynamicCstr.updateProperties(fallback.getProperties());
+  this.comparator = comparator ? comparator() :
+      new sre.DynamicCstr.DefaultComparator(this.dynamicCstr);
+};
+
+
+sre.Engine.DOMAIN_TO_STYLES = {
+  'mathspeak': 'default',
+  'clearspeak': 'default'
+};
+

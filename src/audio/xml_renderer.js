@@ -21,6 +21,7 @@
 goog.provide('sre.XmlRenderer');
 
 goog.require('sre.AudioUtil');
+goog.require('sre.Engine.Error');
 goog.require('sre.MarkupRenderer');
 
 
@@ -46,8 +47,8 @@ sre.XmlRenderer.prototype.markup = function(descrs) {
   var result = [];
   var currentOpen = [];
   for (var i = 0, descr; descr = markup[i]; i++) {
-    if (descr.string) {
-      result.push(descr.string);
+    if (descr.span) {
+      result.push(this.merge(descr.span));
       continue;
     }
     if (sre.AudioUtil.isPauseElement(descr)) {
@@ -58,8 +59,7 @@ sre.XmlRenderer.prototype.markup = function(descrs) {
       for (var j = 0; j < descr.close.length; j++) {
         var last = currentOpen.pop();
         if (descr.close.indexOf(last) === -1) {
-          // TODO: Make this into a Engine error.
-          throw new Error('Unknown closing markup element: ' + last);
+          throw new sre.Engine.Error('Unknown closing markup element: ' + last);
         }
         result.push(this.closeTag(last));
       }
@@ -73,7 +73,7 @@ sre.XmlRenderer.prototype.markup = function(descrs) {
       }, this));
     }
   }
-  return result.join(this.getSeparator());
+  return result.join(' ');  //this.merge(result);
 };
 
 

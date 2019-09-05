@@ -43,6 +43,11 @@ goog.require('sre.XpathUtil');
  */
 sre.MathSimpleStore = function() {
   sre.MathSimpleStore.base(this, 'constructor');
+
+  /**
+   * @type {string}
+   */
+  this.category = '';
 };
 goog.inherits(sre.MathSimpleStore, sre.MathStore);
 
@@ -114,7 +119,7 @@ sre.MathSimpleStore.testDynamicConstraints_ = function(
 sre.MathCompoundStore = function() {
   /**
    * A set of efficient substores.
-   * @type {Object.<sre.MathStore>}
+   * @type {!Object.<sre.MathStore>}
    * @private
    */
   this.subStores_ = {};
@@ -125,6 +130,10 @@ sre.MathCompoundStore = function() {
    */
   this.locale = sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.LOCALE];
 
+  /**
+   * @type {string}
+   */
+  this.modality = sre.DynamicCstr.DEFAULT_VALUES[sre.DynamicCstr.Axis.MODALITY];
 };
 goog.addSingletonGetter(sre.MathCompoundStore);
 
@@ -135,10 +144,12 @@ goog.addSingletonGetter(sre.MathCompoundStore);
  * @param {string} name Name of the rule.
  * @param {string} str String used as key to refer to the rule store
  * precondition and constr
+ * @param {string} cat The category if it exists.
  * @param {Object} mappings JSON representation of mappings from styles and
  *     domains to strings, from which the speech rules will be computed.
  */
-sre.MathCompoundStore.prototype.defineRules = function(name, str, mappings) {
+sre.MathCompoundStore.prototype.defineRules = function(
+    name, str, cat, mappings) {
   var store = this.subStores_[str];
   if (store) {
     sre.Debugger.getInstance().output('Store exists! ' + str);
@@ -146,7 +157,11 @@ sre.MathCompoundStore.prototype.defineRules = function(name, str, mappings) {
     store = new sre.MathSimpleStore();
     this.subStores_[str] = store;
   }
+  // TODO: Add modality?
   store.locale = this.locale;
+  if (cat) {
+    store.category = cat;
+  }
   store.defineRulesFromMappings(name, str, mappings);
 };
 
@@ -159,6 +174,7 @@ sre.MathCompoundStore.prototype.defineRules = function(name, str, mappings) {
  * @private
  */
 sre.MathCompoundStore.prototype.changeLocale_ = function(json) {
+  // TODO: Add modality check.
   if (!json['locale']) {
     return false;
   }
@@ -176,7 +192,7 @@ sre.MathCompoundStore.prototype.addSymbolRules = function(json) {
     return;
   }
   var key = sre.MathSimpleStore.parseUnicode_(json['key']);
-  this.defineRules(json['key'], key, json['mappings']);
+  this.defineRules(json['key'], key, json['category'], json['mappings']);
 };
 
 
@@ -190,8 +206,9 @@ sre.MathCompoundStore.prototype.addFunctionRules = function(json) {
   }
   var names = json['names'];
   var mappings = json['mappings'];
+  var category = json['category'];
   for (var j = 0, name; name = names[j]; j++) {
-    this.defineRules(name, name, mappings);
+    this.defineRules(name, name, category, mappings);
   }
 };
 
@@ -221,10 +238,18 @@ sre.MathCompoundStore.prototype.addUnitRules = function(json) {
  */
 sre.MathCompoundStore.prototype.lookupRule = function(node, dynamic) {
   var store = this.subStores_[node];
-  if (store) {
-    return store.lookupRule(null, dynamic);
-  }
-  return null;
+  return store ? store.lookupRule(null, dynamic) : null;
+};
+
+
+/**
+ * Retrieves the category of a character or string if it has one.
+ * @param {string} character The character or string.
+ * @return {string} The category if it exists.
+ */
+sre.MathCompoundStore.prototype.lookupCategory = function(character) {
+  var store = this.subStores_[character];
+  return store ? store.category : '';
 };
 
 
@@ -248,7 +273,22 @@ sre.MathCompoundStore.prototype.lookupString = function(text, dynamic) {
 
 
 /**
- * Parses a string with a hex representatino of a unicode code point into the
+ * Collates information on dynamic constraint values of the currently active
+ * trie of the engine.
+ * @param {Object=} opt_info Initial dynamic constraint information.
+ * @return {Object} The collated information.
+ */
+sre.MathCompoundStore.prototype.enumerate = function(opt_info) {
+  var info = opt_info || {};
+  for (var store in this.subStores_) {
+    info = this.subStores_[store].trie.enumerate(info);
+  }
+  return info;
+};
+
+
+/**
+ * Parses a string with a hex representation of a unicode code point into the
  * corresponding unicode character.
  * @param {string} number The code point to be parsed.
  * @return {string} The unicode character.

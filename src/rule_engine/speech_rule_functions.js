@@ -155,9 +155,9 @@ sre.SpeechRuleFunctions.Store_.prototype.
     checkCustomFunctionSyntax_ = function(name) {
   var reg = new RegExp('^' + this.prefix_);
   if (!name.match(reg)) {
-    console.log(
+    console.error(
         'FunctionError: Invalid function name. Expected prefix ' +
-                this.prefix_);
+        this.prefix_);
     return false;
   }
   return true;

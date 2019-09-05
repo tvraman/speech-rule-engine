@@ -8,7 +8,11 @@
         "short": "cap a"
       },
       "mathspeak": {
-        "default": "upper A"
+        "default": "upper A",
+        "nemeth": "⠠⠁"
+      },
+      "clearspeak": {
+        "default": "cap A"
       }
     }
   },
@@ -21,7 +25,11 @@
         "short": "cap b"
       },
       "mathspeak": {
-        "default": "upper B"
+        "default": "upper B",
+        "nemeth": "⠠⠃"
+      },
+      "clearspeak": {
+        "default": "cap B"
       }
     }
   },
@@ -34,7 +42,11 @@
         "short": "cap c"
       },
       "mathspeak": {
-        "default": "upper C"
+        "default": "upper C",
+        "nemeth": "⠠⠉"
+      },
+      "clearspeak": {
+        "default": "cap C"
       }
     }
   },
@@ -47,7 +59,11 @@
         "short": "cap d"
       },
       "mathspeak": {
-        "default": "upper D"
+        "default": "upper D",
+        "nemeth": "⠠⠙"
+      },
+      "clearspeak": {
+        "default": "cap D"
       }
     }
   },
@@ -60,7 +76,11 @@
         "short": "cap e"
       },
       "mathspeak": {
-        "default": "upper E"
+        "default": "upper E",
+        "nemeth": "⠠⠑"
+      },
+      "clearspeak": {
+        "default": "cap E"
       }
     }
   },
@@ -73,7 +93,11 @@
         "short": "cap f"
       },
       "mathspeak": {
-        "default": "upper F"
+        "default": "upper F",
+        "nemeth": "⠠⠋"
+      },
+      "clearspeak": {
+        "default": "cap F"
       }
     }
   },
@@ -86,7 +110,11 @@
         "short": "cap g"
       },
       "mathspeak": {
-        "default": "upper G"
+        "default": "upper G",
+        "nemeth": "⠠⠛"
+      },
+      "clearspeak": {
+        "default": "cap G"
       }
     }
   },
@@ -99,7 +127,11 @@
         "short": "cap h"
       },
       "mathspeak": {
-        "default": "upper H"
+        "default": "upper H",
+        "nemeth": "⠠⠓"
+      },
+      "clearspeak": {
+        "default": "cap H"
       }
     }
   },
@@ -112,7 +144,11 @@
         "short": "cap i"
       },
       "mathspeak": {
-        "default": "upper I"
+        "default": "upper I",
+        "nemeth": "⠠⠊"
+      },
+      "clearspeak": {
+        "default": "cap I"
       }
     }
   },
@@ -125,7 +161,11 @@
         "short": "cap j"
       },
       "mathspeak": {
-        "default": "upper J"
+        "default": "upper J",
+        "nemeth": "⠠⠚"
+      },
+      "clearspeak": {
+        "default": "cap J"
       }
     }
   },
@@ -138,7 +178,11 @@
         "short": "cap k"
       },
       "mathspeak": {
-        "default": "upper K"
+        "default": "upper K",
+        "nemeth": "⠠⠅"
+      },
+      "clearspeak": {
+        "default": "cap K"
       }
     }
   },
@@ -151,7 +195,11 @@
         "short": "cap l"
       },
       "mathspeak": {
-        "default": "upper L"
+        "default": "upper L",
+        "nemeth": "⠠⠇"
+      },
+      "clearspeak": {
+        "default": "cap L"
       }
     }
   },
@@ -164,7 +212,11 @@
         "short": "cap m"
       },
       "mathspeak": {
-        "default": "upper M"
+        "default": "upper M",
+        "nemeth": "⠠⠍"
+      },
+      "clearspeak": {
+        "default": "cap M"
       }
     }
   },
@@ -177,7 +229,11 @@
         "short": "cap n"
       },
       "mathspeak": {
-        "default": "upper N"
+        "default": "upper N",
+        "nemeth": "⠠⠝"
+      },
+      "clearspeak": {
+        "default": "cap N"
       }
     }
   },
@@ -190,7 +246,11 @@
         "short": "cap o"
       },
       "mathspeak": {
-        "default": "upper O"
+        "default": "upper O",
+        "nemeth": "⠠⠕"
+      },
+      "clearspeak": {
+        "default": "cap O"
       }
     }
   },
@@ -203,7 +263,11 @@
         "short": "cap p"
       },
       "mathspeak": {
-        "default": "upper P"
+        "default": "upper P",
+        "nemeth": "⠠⠏"
+      },
+      "clearspeak": {
+        "default": "cap P"
       }
     }
   },
@@ -216,7 +280,11 @@
         "short": "cap q"
       },
       "mathspeak": {
-        "default": "upper Q"
+        "default": "upper Q",
+        "nemeth": "⠠⠟"
+      },
+      "clearspeak": {
+        "default": "cap Q"
       }
     }
   },
@@ -229,7 +297,11 @@
         "short": "cap r"
       },
       "mathspeak": {
-        "default": "upper R"
+        "default": "upper R",
+        "nemeth": "⠠⠗"
+      },
+      "clearspeak": {
+        "default": "cap R"
       }
     }
   },
@@ -242,7 +314,11 @@
         "short": "cap s"
       },
       "mathspeak": {
-        "default": "upper S"
+        "default": "upper S",
+        "nemeth": "⠠⠎"
+      },
+      "clearspeak": {
+        "default": "cap S"
       }
     }
   },
@@ -255,7 +331,11 @@
         "short": "cap t"
       },
       "mathspeak": {
-        "default": "upper T"
+        "default": "upper T",
+        "nemeth": "⠠⠞"
+      },
+      "clearspeak": {
+        "default": "cap T"
       }
     }
   },
@@ -268,7 +348,11 @@
         "short": "cap u"
       },
       "mathspeak": {
-        "default": "upper U"
+        "default": "upper U",
+        "nemeth": "⠠⠥"
+      },
+      "clearspeak": {
+        "default": "cap U"
       }
     }
   },
@@ -281,7 +365,11 @@
         "short": "cap v"
       },
       "mathspeak": {
-        "default": "upper V"
+        "default": "upper V",
+        "nemeth": "⠠⠧"
+      },
+      "clearspeak": {
+        "default": "cap V"
       }
     }
   },
@@ -294,7 +382,11 @@
         "short": "cap w"
       },
       "mathspeak": {
-        "default": "upper W"
+        "default": "upper W",
+        "nemeth": "⠠⠺"
+      },
+      "clearspeak": {
+        "default": "cap W"
       }
     }
   },
@@ -307,7 +399,11 @@
         "short": "cap x"
       },
       "mathspeak": {
-        "default": "upper X"
+        "default": "upper X",
+        "nemeth": "⠠⠭"
+      },
+      "clearspeak": {
+        "default": "cap X"
       }
     }
   },
@@ -320,7 +416,11 @@
         "short": "cap y"
       },
       "mathspeak": {
-        "default": "upper Y"
+        "default": "upper Y",
+        "nemeth": "⠠⠽"
+      },
+      "clearspeak": {
+        "default": "cap Y"
       }
     }
   },
@@ -333,7 +433,11 @@
         "short": "cap z"
       },
       "mathspeak": {
-        "default": "upper Z"
+        "default": "upper Z",
+        "nemeth": "⠠⠵"
+      },
+      "clearspeak": {
+        "default": "cap Z"
       }
     }
   },
@@ -347,7 +451,11 @@
         "short": "cap a"
       },
       "mathspeak": {
-        "default": "upper A"
+        "default": "upper A",
+        "nemeth": "⠠⠁"
+      },
+      "clearspeak": {
+        "default": "cap A"
       }
     }
   },
@@ -361,7 +469,11 @@
         "short": "cap b"
       },
       "mathspeak": {
-        "default": "upper B"
+        "default": "upper B",
+        "nemeth": "⠠⠃"
+      },
+      "clearspeak": {
+        "default": "cap B"
       }
     }
   },
@@ -375,7 +487,11 @@
         "short": "cap c"
       },
       "mathspeak": {
-        "default": "upper C"
+        "default": "upper C",
+        "nemeth": "⠠⠉"
+      },
+      "clearspeak": {
+        "default": "cap C"
       }
     }
   },
@@ -389,7 +505,11 @@
         "short": "cap d"
       },
       "mathspeak": {
-        "default": "upper D"
+        "default": "upper D",
+        "nemeth": "⠠⠙"
+      },
+      "clearspeak": {
+        "default": "cap D"
       }
     }
   },
@@ -403,7 +523,11 @@
         "short": "cap e"
       },
       "mathspeak": {
-        "default": "upper E"
+        "default": "upper E",
+        "nemeth": "⠠⠑"
+      },
+      "clearspeak": {
+        "default": "cap E"
       }
     }
   },
@@ -417,7 +541,11 @@
         "short": "cap f"
       },
       "mathspeak": {
-        "default": "upper F"
+        "default": "upper F",
+        "nemeth": "⠠⠋"
+      },
+      "clearspeak": {
+        "default": "cap F"
       }
     }
   },
@@ -431,7 +559,11 @@
         "short": "cap g"
       },
       "mathspeak": {
-        "default": "upper G"
+        "default": "upper G",
+        "nemeth": "⠠⠛"
+      },
+      "clearspeak": {
+        "default": "cap G"
       }
     }
   },
@@ -445,7 +577,11 @@
         "short": "cap h"
       },
       "mathspeak": {
-        "default": "upper H"
+        "default": "upper H",
+        "nemeth": "⠠⠓"
+      },
+      "clearspeak": {
+        "default": "cap H"
       }
     }
   },
@@ -459,7 +595,11 @@
         "short": "cap i"
       },
       "mathspeak": {
-        "default": "upper I"
+        "default": "upper I",
+        "nemeth": "⠠⠊"
+      },
+      "clearspeak": {
+        "default": "cap I"
       }
     }
   },
@@ -473,7 +613,11 @@
         "short": "cap j"
       },
       "mathspeak": {
-        "default": "upper J"
+        "default": "upper J",
+        "nemeth": "⠠⠚"
+      },
+      "clearspeak": {
+        "default": "cap J"
       }
     }
   },
@@ -487,7 +631,11 @@
         "short": "cap k"
       },
       "mathspeak": {
-        "default": "upper K"
+        "default": "upper K",
+        "nemeth": "⠠⠅"
+      },
+      "clearspeak": {
+        "default": "cap K"
       }
     }
   },
@@ -501,7 +649,11 @@
         "short": "cap l"
       },
       "mathspeak": {
-        "default": "upper L"
+        "default": "upper L",
+        "nemeth": "⠠⠇"
+      },
+      "clearspeak": {
+        "default": "cap L"
       }
     }
   },
@@ -515,7 +667,11 @@
         "short": "cap m"
       },
       "mathspeak": {
-        "default": "upper M"
+        "default": "upper M",
+        "nemeth": "⠠⠍"
+      },
+      "clearspeak": {
+        "default": "cap M"
       }
     }
   },
@@ -529,7 +685,11 @@
         "short": "cap n"
       },
       "mathspeak": {
-        "default": "upper N"
+        "default": "upper N",
+        "nemeth": "⠠⠝"
+      },
+      "clearspeak": {
+        "default": "cap N"
       }
     }
   },
@@ -543,7 +703,11 @@
         "short": "cap o"
       },
       "mathspeak": {
-        "default": "upper O"
+        "default": "upper O",
+        "nemeth": "⠠⠕"
+      },
+      "clearspeak": {
+        "default": "cap O"
       }
     }
   },
@@ -557,7 +721,11 @@
         "short": "cap p"
       },
       "mathspeak": {
-        "default": "upper P"
+        "default": "upper P",
+        "nemeth": "⠠⠏"
+      },
+      "clearspeak": {
+        "default": "cap P"
       }
     }
   },
@@ -571,7 +739,11 @@
         "short": "cap q"
       },
       "mathspeak": {
-        "default": "upper Q"
+        "default": "upper Q",
+        "nemeth": "⠠⠟"
+      },
+      "clearspeak": {
+        "default": "cap Q"
       }
     }
   },
@@ -585,7 +757,11 @@
         "short": "cap r"
       },
       "mathspeak": {
-        "default": "upper R"
+        "default": "upper R",
+        "nemeth": "⠠⠗"
+      },
+      "clearspeak": {
+        "default": "cap R"
       }
     }
   },
@@ -599,7 +775,11 @@
         "short": "cap s"
       },
       "mathspeak": {
-        "default": "upper S"
+        "default": "upper S",
+        "nemeth": "⠠⠎"
+      },
+      "clearspeak": {
+        "default": "cap S"
       }
     }
   },
@@ -613,7 +793,11 @@
         "short": "cap t"
       },
       "mathspeak": {
-        "default": "upper T"
+        "default": "upper T",
+        "nemeth": "⠠⠞"
+      },
+      "clearspeak": {
+        "default": "cap T"
       }
     }
   },
@@ -627,7 +811,11 @@
         "short": "cap u"
       },
       "mathspeak": {
-        "default": "upper U"
+        "default": "upper U",
+        "nemeth": "⠠⠥"
+      },
+      "clearspeak": {
+        "default": "cap U"
       }
     }
   },
@@ -641,7 +829,11 @@
         "short": "cap v"
       },
       "mathspeak": {
-        "default": "upper V"
+        "default": "upper V",
+        "nemeth": "⠠⠧"
+      },
+      "clearspeak": {
+        "default": "cap V"
       }
     }
   },
@@ -655,7 +847,11 @@
         "short": "cap w"
       },
       "mathspeak": {
-        "default": "upper W"
+        "default": "upper W",
+        "nemeth": "⠠⠺"
+      },
+      "clearspeak": {
+        "default": "cap W"
       }
     }
   },
@@ -669,7 +865,11 @@
         "short": "cap x"
       },
       "mathspeak": {
-        "default": "upper X"
+        "default": "upper X",
+        "nemeth": "⠠⠭"
+      },
+      "clearspeak": {
+        "default": "cap X"
       }
     }
   },
@@ -683,7 +883,11 @@
         "short": "cap y"
       },
       "mathspeak": {
-        "default": "upper Y"
+        "default": "upper Y",
+        "nemeth": "⠠⠽"
+      },
+      "clearspeak": {
+        "default": "cap Y"
       }
     }
   },
@@ -697,7 +901,11 @@
         "short": "cap z"
       },
       "mathspeak": {
-        "default": "upper Z"
+        "default": "upper Z",
+        "nemeth": "⠠⠵"
+      },
+      "clearspeak": {
+        "default": "cap Z"
       }
     }
   }

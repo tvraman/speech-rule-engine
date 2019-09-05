@@ -48,6 +48,7 @@
  */
 
 goog.provide('sre.SemanticAttr');
+goog.provide('sre.SemanticMeaning');
 
 goog.require('sre.SemanticUtil');
 
@@ -77,6 +78,13 @@ sre.SemanticAttr = function() {
         '﹉', '﹊', '﹋', '﹌', '﹐', '﹔', '﹕', '﹖', '﹗', '﹟', '﹠', '﹡', '﹨',
         '﹪', '﹫', '！', '＂', '＃', '％', '＆', '＇', '＊', '，', '／', '：',
         '；', '？', '＠', '＼'
+      ];
+  /**
+   * @type {Array.<string>}
+   */
+  this.colons =
+      [
+        ':', '：', '﹕'
       ];
   /**
    * @type {string}
@@ -117,6 +125,13 @@ sre.SemanticAttr = function() {
   this.primes =
       [
         '\'', '′', '″', '‴', '‵', '‶', '‷', '⁗'
+      ];
+  /**
+   * @type {Array.<string>}
+   */
+  this.degrees =
+      [
+        '°'
       ];
 
   // Fences.
@@ -910,7 +925,7 @@ sre.SemanticAttr = function() {
    * @type  {Array.<{set: Array.<string>,
    *         role: sre.SemanticAttr.Role,
    *         type: sre.SemanticAttr.Type,
-   *         font: sre.SemanticAttr.Font}>} The semantic meaning of the symbol.
+   *         font: sre.SemanticAttr.Font}>} Assigns sets of symbols to meaning.
    * @private
    */
   this.symbolSetToSemantic_ = [
@@ -918,6 +933,10 @@ sre.SemanticAttr = function() {
     {set: this.generalPunctuations,
       type: sre.SemanticAttr.Type.PUNCTUATION,
       role: sre.SemanticAttr.Role.UNKNOWN
+    },
+    {set: this.colons,
+      type: sre.SemanticAttr.Type.PUNCTUATION,
+      role: sre.SemanticAttr.Role.COLON
     },
     {set: this.commas,
       type: sre.SemanticAttr.Type.PUNCTUATION,
@@ -938,6 +957,10 @@ sre.SemanticAttr = function() {
     {set: this.primes,
       type: sre.SemanticAttr.Type.PUNCTUATION,
       role: sre.SemanticAttr.Role.PRIME
+    },
+    {set: this.degrees,
+      type: sre.SemanticAttr.Type.PUNCTUATION,
+      role: sre.SemanticAttr.Role.DEGREE
     },
     // Fences
     {set: this.leftFences,
@@ -1278,7 +1301,7 @@ sre.SemanticAttr = function() {
       role: sre.SemanticAttr.Role.PREFIXFUNC},
     {set: this.infixFunctions,
       type: sre.SemanticAttr.Type.OPERATOR,
-      role: sre.SemanticAttr.Role.MULTIPLICATION
+      role: sre.SemanticAttr.Role.INFIXFUNC
     }
     // TODO (sorge) Add some of the remaining elements.
   ];
@@ -1368,9 +1391,16 @@ sre.SemanticAttr.Type = {
   // Enclosed (counterpart for menclosed).
   ENCLOSE: 'enclose',
 
+  // Proofs and Inferences
+  INFERENCE: 'inference',
+  RULELABEL: 'rulelabel',
+  CONCLUSION: 'conclusion',
+  PREMISES: 'premises',
+
   // General.
   UNKNOWN: 'unknown',
   EMPTY: 'empty'
+
 };
 
 
@@ -1387,7 +1417,9 @@ sre.SemanticAttr.Role = {
   FULLSTOP: 'fullstop',
   DASH: 'dash',
   PRIME: 'prime',   // Superscript.
+  DEGREE: 'degree',   // Superscript.
   VBAR: 'vbar',  // A vertical bar.
+  COLON: 'colon',  // A vertical bar.
   OPENFENCE: 'openfence',
   CLOSEFENCE: 'closefence',
   APPLICATION: 'application', // Function Application.
@@ -1434,6 +1466,12 @@ sre.SemanticAttr.Role = {
   LEFTRIGHT: 'leftright',
   ABOVEBELOW: 'abovebelow',
 
+  // Sets.
+  SETEMPTY: 'set empty',
+  SETEXT: 'set extended',
+  SETSINGLE: 'set singleton',
+  SETCOLLECT: 'set collection',
+
   // Text.
   STRING: 'string',
 
@@ -1445,6 +1483,7 @@ sre.SemanticAttr.Role = {
 
   // Operators.
   NEGATIVE: 'negative',
+  POSITIVE: 'positive',
   NEGATION: 'negation',
   MULTIOP: 'multiop',
 
@@ -1454,6 +1493,7 @@ sre.SemanticAttr.Role = {
   PREFIXFUNC: 'prefix function',
   POSTFIXFUNC: 'postfix function',
   SIMPLEFUNC: 'simple function',
+  COMPFUNC: 'composed function',
 
   // Large operators.
   SUM: 'sum',
@@ -1490,9 +1530,22 @@ sre.SemanticAttr.Role = {
   CASES: 'cases',
   TABLE: 'table',
 
+  // Inference Roles
+  PROOF: 'proof',
+  LEFT: 'left',
+  RIGHT: 'right',
+  UP: 'up',
+  DOWN: 'down',
+  // conclusion types
+  FINAL: 'final',
+  // premise types
+  SINGLE: 'single',
+  HYP: 'hyp',
+  AXIOM: 'axiom',
+
   // General
-  UNKNOWN: 'unknown',
-  PROTECTED: 'protected'
+  UNKNOWN: 'unknown'
+
 };
 
 
@@ -1526,6 +1579,27 @@ sre.SemanticAttr.Font = {
 
 
 /**
+ * @typedef {{type: sre.SemanticAttr.Type,
+ *            role: sre.SemanticAttr.Role,
+ *            font: sre.SemanticAttr.Font}}
+ */
+sre.SemanticMeaning;
+
+
+/**
+ * Equality on meaning objects.
+ * @param {sre.SemanticMeaning} meaning1 First meaning.
+ * @param {sre.SemanticMeaning} meaning2 Second meaning.
+ * @return {boolean} True if both contain the same field entries.
+ */
+sre.SemanticAttr.equal = function(meaning1, meaning2) {
+  return meaning1.type === meaning2.type &&
+      meaning1.role === meaning2.role &&
+      meaning1.font === meaning2.font;
+};
+
+
+/**
  * Lookup the semantic type of a symbol.
  * @param {string} symbol The symbol to which we want to determine the type.
  * @return {sre.SemanticAttr.Type} The semantic type of the symbol.
@@ -1548,8 +1622,7 @@ sre.SemanticAttr.prototype.lookupRole = function(symbol) {
 /**
  * Lookup the semantic meaning of a symbol in terms of type and role.
  * @param {string} symbol The symbol to which we want to determine the meaning.
- * @return {{role: sre.SemanticAttr.Role,
- *           type: sre.SemanticAttr.Type}} The semantic meaning of the symbol.
+ * @return {sre.SemanticMeaning} The semantic meaning of the symbol.
  */
 sre.SemanticAttr.lookupMeaning = function(symbol) {
   return sre.SemanticAttr.getInstance().lookupMeaning_(symbol);
@@ -1680,10 +1753,8 @@ sre.SemanticAttr.prototype.isMatchingFence_ = function(open, close) {
 
 /**
  * Initializes the dictionary mapping strings to meaning.
- * @return {Object.<{role: sre.SemanticAttr.Role,
- *           type: sre.SemanticAttr.Type,
- *           font: sre.SemanticAttr.Font}>} The dictionary mapping strings to
- * semantic attributes.
+ * @return {Object.<sre.SemanticMeaning>} The dictionary mapping strings to
+ *     semantic attributes.
  * @private
  */
 sre.SemanticAttr.prototype.initMeaning_ = function() {
@@ -1703,9 +1774,7 @@ sre.SemanticAttr.prototype.initMeaning_ = function() {
 /**
  * Lookup the semantic meaning of a symbol in terms of type and role.
  * @param {string} symbol The symbol to which we want to determine the meaning.
- * @return {{role: sre.SemanticAttr.Role,
- *           type: sre.SemanticAttr.Type,
- *           font: sre.SemanticAttr.Font}} The semantic meaning of the symbol.
+ * @return {sre.SemanticMeaning} The semantic meaning of the symbol.
  * @private
  */
 sre.SemanticAttr.prototype.lookupMeaning_ = function(symbol) {
